@@ -14,7 +14,7 @@ const DEMO_RELEASES = [
     soundcloudUrl: "https://soundcloud.com/italoghetto",
     spotifyUrl: "",
     artworkUrl: "",
-    audioUrl: "",
+    tracks: [], // array di { name, url }
     pdfUrl: "",
     description: "Una release che attraversa territori industriali con anima groove. Quattro tracce di pressione pura.",
   }
@@ -56,19 +56,25 @@ const StarRating = ({ value, onChange, readonly = false }) => (
   </div>
 );
 
-// ─── AUDIO PLAYER ─────────────────────────────────────────────────────────────
-const AudioPlayer = ({ url }) => {
+// ─── SINGLE TRACK PLAYER ──────────────────────────────────────────────────────
+const TrackPlayer = ({ track, index, isPlaying, onPlay }) => {
   const audioRef = useRef(null);
-  const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
 
-  const toggle = () => {
-    if (!audioRef.current) return;
-    if (playing) { audioRef.current.pause(); setPlaying(false); }
-    else { audioRef.current.play(); setPlaying(true); }
-  };
+  useEffect(() => {
+    if (!isPlaying && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setProgress(0); setCurrentTime(0);
+    }
+    if (isPlaying && audioRef.current) {
+      audioRef.current.play();
+    }
+  }, [isPlaying]);
+
+  const toggle = () => onPlay(isPlaying ? null : index);
   const onTimeUpdate = () => {
     if (!audioRef.current) return;
     const ct = audioRef.current.currentTime;
@@ -76,7 +82,7 @@ const AudioPlayer = ({ url }) => {
     setCurrentTime(ct); setProgress((ct / dur) * 100);
   };
   const onLoadedMetadata = () => { if (audioRef.current) setDuration(audioRef.current.duration); };
-  const onEnded = () => setPlaying(false);
+  const onEnded = () => { onPlay(null); setProgress(0); setCurrentTime(0); };
   const seek = (e) => {
     if (!audioRef.current) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -85,25 +91,49 @@ const AudioPlayer = ({ url }) => {
   const fmt = (s) => { if (!s || isNaN(s)) return "0:00"; return `${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,"0")}`; };
 
   return (
-    <div style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", padding: "16px 18px", marginBottom: 6 }}>
-      <audio ref={audioRef} src={url} onTimeUpdate={onTimeUpdate} onLoadedMetadata={onLoadedMetadata} onEnded={onEnded} preload="metadata" />
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <button onClick={toggle} style={{ width: 38, height: 38, borderRadius: "50%", background: "#ffffff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "opacity 0.2s" }}
-          onMouseEnter={e => e.currentTarget.style.opacity = "0.85"}
-          onMouseLeave={e => e.currentTarget.style.opacity = "1"}
-        >
-          <span style={{ color: "#1d52b8", fontSize: 13, lineHeight: 1, marginLeft: playing ? 0 : 2 }}>{playing ? "⏸" : "▶"}</span>
+    <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "12px 16px", marginBottom: 4, transition: "border-color 0.2s" }}>
+      <audio ref={audioRef} src={track.url} onTimeUpdate={onTimeUpdate} onLoadedMetadata={onLoadedMetadata} onEnded={onEnded} preload="metadata" />
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        {/* track number */}
+        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.25)", width: 16, textAlign: "center", flexShrink: 0 }}>{String(index + 1).padStart(2,"0")}</span>
+
+        {/* play button */}
+        <button onClick={toggle} style={{ width: 32, height: 32, borderRadius: "50%", background: isPlaying ? "#ffffff" : "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}>
+          <span style={{ color: isPlaying ? "#1d52b8" : "#fff", fontSize: 11, marginLeft: isPlaying ? 0 : 2 }}>{isPlaying ? "⏸" : "▶"}</span>
         </button>
-        <div style={{ flex: 1 }}>
-          <div onClick={seek} style={{ height: 4, background: "rgba(255,255,255,0.1)", cursor: "pointer", position: "relative", borderRadius: 2 }}>
-            <div style={{ height: "100%", width: `${progress}%`, background: "#ffffff", borderRadius: 2, transition: "width 0.1s linear" }} />
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
-            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.35)" }}>{fmt(currentTime)}</span>
-            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.35)" }}>{fmt(duration)}</span>
+
+        {/* track name + progress */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "#fff", marginBottom: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{track.name}</div>
+          <div onClick={seek} style={{ height: 3, background: "rgba(255,255,255,0.1)", cursor: "pointer", borderRadius: 2 }}>
+            <div style={{ height: "100%", width: `${progress}%`, background: "#fff", borderRadius: 2, transition: "width 0.1s linear" }} />
           </div>
         </div>
+
+        {/* time */}
+        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.3)", flexShrink: 0, minWidth: 36, textAlign: "right" }}>
+          {isPlaying ? fmt(currentTime) : fmt(duration)}
+        </span>
       </div>
+    </div>
+  );
+};
+
+// ─── TRACKLIST PLAYER ─────────────────────────────────────────────────────────
+const TracklistPlayer = ({ tracks }) => {
+  const [playingIndex, setPlayingIndex] = useState(null);
+  if (!tracks || tracks.length === 0) return null;
+  return (
+    <div>
+      {tracks.map((track, i) => (
+        <TrackPlayer
+          key={i}
+          track={track}
+          index={i}
+          isPlaying={playingIndex === i}
+          onPlay={setPlayingIndex}
+        />
+      ))}
     </div>
   );
 };
@@ -119,6 +149,75 @@ const uploadToCloudinary = async (file, resourceType = "auto") => {
   return (await res.json()).secure_url;
 };
 
+// ─── MULTI TRACK UPLOAD ───────────────────────────────────────────────────────
+const MultiTrackUpload = ({ tracks, onTracksChange }) => {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const inputRef = useRef(null);
+
+  const handleFiles = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setUploading(true); setError("");
+    try {
+      const uploaded = await Promise.all(
+        files.map(async (file) => {
+          const url = await uploadToCloudinary(file, "video");
+          return { name: file.name.replace(/\.[^/.]+$/, ""), url };
+        })
+      );
+      onTracksChange([...tracks, ...uploaded]);
+    } catch {
+      setError("Upload fallito. Controlla Cloud Name e Upload Preset.");
+    }
+    setUploading(false);
+    e.target.value = "";
+  };
+
+  const removeTrack = (i) => onTracksChange(tracks.filter((_, idx) => idx !== i));
+
+  return (
+    <div>
+      <input ref={inputRef} type="file" accept="audio/*" multiple onChange={handleFiles} style={{ display: "none" }} />
+
+      {/* tracce già caricate */}
+      {tracks.length > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          {tracks.map((t, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid rgba(120,220,120,0.2)", padding: "8px 12px", marginBottom: 4, background: "rgba(120,220,120,0.04)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.3)" }}>{String(i+1).padStart(2,"0")}</span>
+                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(120,220,120,0.8)" }}>✓ {t.name}</span>
+              </div>
+              <button onClick={() => removeTrack(i)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", cursor: "pointer", fontSize: 14, padding: 0 }}>✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* upload button */}
+      <div onClick={() => !uploading && inputRef.current?.click()} style={{
+        border: "1px dashed rgba(255,255,255,0.15)", padding: "16px", cursor: uploading ? "wait" : "pointer",
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        transition: "all 0.2s", background: "transparent",
+      }}
+        onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"}
+        onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+      >
+        <div>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.6)", letterSpacing: "0.1em" }}>
+            {uploading ? "Caricamento tracce..." : `↑ Carica tracce audio (puoi selezionarne più di una)`}
+          </div>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.25)", marginTop: 3 }}>MP3 / WAV — selezione multipla supportata</div>
+        </div>
+        {uploading && <div style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.2)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />}
+      </div>
+      {error && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,80,80,0.8)", marginTop: 6 }}>{error}</div>}
+    </div>
+  );
+};
+
+// ─── SINGLE FILE UPLOAD ───────────────────────────────────────────────────────
 const UploadField = ({ label, accept, resourceType, onUploaded, uploaded }) => {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -129,7 +228,7 @@ const UploadField = ({ label, accept, resourceType, onUploaded, uploaded }) => {
     if (!file) return;
     setUploading(true); setError("");
     try { onUploaded(await uploadToCloudinary(file, resourceType)); }
-    catch { setError("Upload fallito. Controlla Cloud Name e Upload Preset."); }
+    catch { setError("Upload fallito."); }
     setUploading(false);
   };
 
@@ -143,17 +242,17 @@ const UploadField = ({ label, accept, resourceType, onUploaded, uploaded }) => {
         display: "flex", justifyContent: "space-between", alignItems: "center", transition: "all 0.2s",
       }}
         onMouseEnter={e => !uploaded && (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
-        onMouseLeave={e => !uploaded && (e.currentTarget.style.background = "transparent")}
+        onMouseLeave={e => !uploaded && (e.currentTarget.style.background = uploaded ? "rgba(120,220,120,0.04)" : "transparent")}
       >
         <div>
           <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: uploaded ? "rgba(120,220,120,0.8)" : "rgba(255,255,255,0.6)", letterSpacing: "0.1em" }}>
             {uploading ? "Caricamento..." : uploaded ? `✓ ${label} caricato` : `↑ Carica ${label}`}
           </div>
-          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.25)", marginTop: 3, letterSpacing: "0.1em" }}>{accept}</div>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.25)", marginTop: 3 }}>{accept}</div>
         </div>
         {uploading && <div style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.2)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />}
       </div>
-      {error && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,80,80,0.8)", marginTop: 6, letterSpacing: "0.1em" }}>{error}</div>}
+      {error && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,80,80,0.8)", marginTop: 6 }}>{error}</div>}
     </div>
   );
 };
@@ -203,6 +302,8 @@ const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
   const [name, setName] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const relFeedbacks = feedbacks.filter(f => f.releaseId === release.id);
+  const hasTracks = release.tracks && release.tracks.length > 0;
+  const hasDownloads = hasTracks || release.pdfUrl || release.artworkUrl;
 
   const handleSubmit = () => {
     if (!rating || !comment.trim()) return;
@@ -221,15 +322,15 @@ const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
           <p style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.5)", lineHeight: 1.9, marginBottom: 28, borderLeft: "2px solid rgba(255,255,255,0.15)", paddingLeft: 16 }}>{release.description}</p>
         )}
 
-        {/* PLAYER — sempre visibile */}
-        {release.audioUrl && (
+        {/* TRACKLIST — sempre visibile */}
+        {hasTracks && (
           <div style={{ marginBottom: 28 }}>
-            <SectionLabel>Ascolta in anteprima</SectionLabel>
-            <AudioPlayer url={release.audioUrl} />
+            <SectionLabel>Tracklist — {release.tracks.length} tracce</SectionLabel>
+            <TracklistPlayer tracks={release.tracks} />
           </div>
         )}
 
-        {/* STREAMING LINKS */}
+        {/* STREAMING */}
         {(release.soundcloudUrl || release.spotifyUrl) && (
           <div style={{ marginBottom: 28 }}>
             <SectionLabel>Streaming</SectionLabel>
@@ -240,8 +341,8 @@ const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
           </div>
         )}
 
-        {/* DOWNLOAD — gated */}
-        {(release.audioUrl || release.pdfUrl || release.artworkUrl) && (
+        {/* DOWNLOAD gated */}
+        {hasDownloads && (
           <div style={{ marginBottom: 32 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <SectionLabel>Download</SectionLabel>
@@ -250,13 +351,18 @@ const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
               </span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {release.audioUrl && (submitted ? <DownloadRow label="Download Audio" sub="MP3 / WAV" icon="↓" href={release.audioUrl} /> : <LockedRow label="Download Audio" sub="MP3 / WAV" />)}
+              {hasTracks && release.tracks.map((t, i) => (
+                submitted
+                  ? <DownloadRow key={i} label={t.name} sub="Download audio" icon="↓" href={t.url} />
+                  : <LockedRow key={i} label={t.name} sub="Download audio" />
+              ))}
               {release.pdfUrl && (submitted ? <DownloadRow label="Press Kit PDF" sub="Biografia + info release" icon="↓" href={release.pdfUrl} /> : <LockedRow label="Press Kit PDF" sub="Biografia + info release" />)}
               {release.artworkUrl && (submitted ? <DownloadRow label="Artwork" sub="Alta risoluzione" icon="↓" href={release.artworkUrl} /> : <LockedRow label="Artwork" sub="Alta risoluzione" />)}
             </div>
           </div>
         )}
 
+        {/* FEEDBACK */}
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 28 }}>
           {relFeedbacks.length > 0 && (
             <div style={{ marginBottom: 24 }}>
@@ -310,7 +416,7 @@ const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
 
 // ─── ADMIN MODAL ──────────────────────────────────────────────────────────────
 const AdminModal = ({ onClose, onAddRelease }) => {
-  const [form, setForm] = useState({ artist: "", title: "", label: "", genre: "", date: "", description: "", soundcloudUrl: "", spotifyUrl: "", audioUrl: "", pdfUrl: "", artworkUrl: "" });
+  const [form, setForm] = useState({ artist: "", title: "", label: "", genre: "", date: "", description: "", soundcloudUrl: "", spotifyUrl: "", tracks: [], pdfUrl: "", artworkUrl: "" });
   const [saved, setSaved] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -326,9 +432,13 @@ const AdminModal = ({ onClose, onAddRelease }) => {
           <textarea placeholder="Descrizione" value={form.description} onChange={e => set("description", e.target.value)} rows={3} style={{ ...iStyle, resize: "vertical" }} onFocus={focusStyle} onBlur={blurStyle} />
 
           <div style={{ marginTop: 8 }}>
-            <SectionLabel>File — carica su Cloudinary</SectionLabel>
+            <SectionLabel>Tracce audio</SectionLabel>
+            <MultiTrackUpload tracks={form.tracks} onTracksChange={v => set("tracks", v)} />
+          </div>
+
+          <div style={{ marginTop: 4 }}>
+            <SectionLabel>Altri file</SectionLabel>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <UploadField label="Audio" accept="audio/mp3,audio/wav,audio/*" resourceType="video" uploaded={!!form.audioUrl} onUploaded={url => set("audioUrl", url)} />
               <UploadField label="Press Kit PDF" accept="application/pdf" resourceType="raw" uploaded={!!form.pdfUrl} onUploaded={url => set("pdfUrl", url)} />
               <UploadField label="Artwork" accept="image/*" resourceType="image" uploaded={!!form.artworkUrl} onUploaded={url => set("artworkUrl", url)} />
             </div>
@@ -351,6 +461,8 @@ const AdminModal = ({ onClose, onAddRelease }) => {
 const ReleaseCard = ({ release, feedbacks, onOpen }) => {
   const relFb = feedbacks.filter(f => f.releaseId === release.id);
   const avg = relFb.length ? (relFb.reduce((s, f) => s + f.rating, 0) / relFb.length).toFixed(1) : null;
+  const trackCount = release.tracks ? release.tracks.length : 0;
+
   return (
     <div onClick={() => onOpen(release)} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", padding: "28px 26px", cursor: "pointer", transition: "border-color 0.25s, background 0.25s, transform 0.25s", position: "relative" }}
       onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.35)"; e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
@@ -374,7 +486,7 @@ const ReleaseCard = ({ release, feedbacks, onOpen }) => {
         {release.date && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.25)" }}>{new Date(release.date).toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" })}</span>}
       </div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {release.audioUrl && <AssetBadge label="Audio" />}
+        {trackCount > 0 && <AssetBadge label={`${trackCount} tracce`} />}
         {release.pdfUrl && <AssetBadge label="Press Kit" />}
         {release.artworkUrl && <AssetBadge label="Artwork" />}
         {release.soundcloudUrl && <AssetBadge label="SoundCloud" />}
@@ -400,8 +512,8 @@ export default function App() {
   useEffect(() => {
     const load = async () => {
       try {
-        const r = await window.storage.get("fp4_releases");
-        const f = await window.storage.get("fp4_feedbacks");
+        const r = await window.storage.get("fp5_releases");
+        const f = await window.storage.get("fp5_feedbacks");
         setReleases(r ? JSON.parse(r.value) : DEMO_RELEASES);
         setFeedbacks(f ? JSON.parse(f.value) : []);
       } catch { setReleases(DEMO_RELEASES); setFeedbacks([]); }
@@ -410,8 +522,8 @@ export default function App() {
     load();
   }, []);
 
-  const saveReleases = async (d) => { try { await window.storage.set("fp4_releases", JSON.stringify(d)); } catch {} };
-  const saveFeedbacks = async (d) => { try { await window.storage.set("fp4_feedbacks", JSON.stringify(d)); } catch {} };
+  const saveReleases = async (d) => { try { await window.storage.set("fp5_releases", JSON.stringify(d)); } catch {} };
+  const saveFeedbacks = async (d) => { try { await window.storage.set("fp5_feedbacks", JSON.stringify(d)); } catch {} };
   const addRelease = (rel) => { const n = [rel, ...releases]; setReleases(n); saveReleases(n); setShowAdmin(false); };
   const addFeedback = (fb) => { const n = [...feedbacks, fb]; setFeedbacks(n); saveFeedbacks(n); };
   const handleAdminUnlock = () => {
@@ -487,12 +599,18 @@ export default function App() {
           <div style={{ padding: "44px 32px 36px" }}>
             <h2 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 20, color: "#fff", margin: "0 0 24px" }}>Accesso Admin</h2>
             <input type="password" placeholder="Password" value={adminKey} onChange={e => { setAdminKey(e.target.value); setAdminError(false); }} onKeyDown={e => e.key === "Enter" && handleAdminUnlock()} style={{ ...iStyle, borderColor: adminError ? "rgba(255,80,80,0.5)" : "rgba(255,255,255,0.1)" }} onFocus={focusStyle} onBlur={blurStyle} />
-            {adminError && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,80,80,0.8)", marginTop: 8, letterSpacing: "0.1em" }}>Password errata.</div>}
+            {adminError && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,80,80,0.8)", marginTop: 8 }}>Password errata.</div>}
             <button onClick={handleAdminUnlock} style={{ marginTop: 14, background: "#fff", border: "none", color: "#1d52b8", fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", padding: "11px 20px", cursor: "pointer", width: "100%", fontWeight: 700 }}>Entra</button>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.2)", marginTop: 12, letterSpacing: "0.1em" }}>Password demo: futurepressure</div>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.2)", marginTop: 12 }}>Password demo: futurepressure</div>
           </div>
         </Modal>
       )}
     </div>
   );
 }
+
+ 
+       
+      
+            
+ 
