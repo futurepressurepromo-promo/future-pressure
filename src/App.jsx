@@ -68,7 +68,7 @@ const TrackPlayer = ({ track, index, isPlaying, onPlay }) => {
 
   useEffect(() => {
     if (!audioRef.current) return;
-    if (isPlaying) audioRef.current.play();
+    if (isPlaying) audioRef.current.play().catch(() => {});
     else { audioRef.current.pause(); audioRef.current.currentTime = 0; setProgress(0); setCurrentTime(0); }
   }, [isPlaying]);
 
@@ -202,7 +202,7 @@ const FileUpload = ({ label, accept, resourceType, url, onUploaded }) => {
 const Modal = ({ onClose, children }) => (
   <div onClick={e => e.target === e.currentTarget && onClose()} style={{ position: "fixed", inset: 0, background: "rgba(8,20,60,0.93)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20, backdropFilter: "blur(6px)" }}>
     <div style={{ background: "#0e1e5e", border: "1px solid rgba(255,255,255,0.12)", width: "100%", maxWidth: 640, maxHeight: "90vh", overflowY: "auto", position: "relative" }}>
-      <button onClick={onClose} style={{ position: "absolute", top: 14, right: 16, background: "none", border: "none", color: "rgba(255,255,255,0.3)", cursor: "pointer", fontSize: 18, lineHeight: 1 }}
+      <button onClick={onClose} style={{ position: "absolute", top: 14, right: 16, background: "none", border: "none", color: "rgba(255,255,255,0.3)", cursor: "pointer", fontSize: 18, lineHeight: 1, zIndex: 10 }}
         onMouseEnter={e => e.currentTarget.style.color = "#fff"}
         onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.3)"}
       >✕</button>
@@ -255,11 +255,26 @@ const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
 
   return (
     <Modal onClose={onClose}>
-      <div style={{ padding: "44px 32px 40px" }}>
-        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.4)", letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: 10 }}>{release.label}</div>
-        <h2 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 28, color: "#fff", margin: "0 0 6px", letterSpacing: "-0.01em" }}>{release.title}</h2>
-        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 24 }}>{release.artist}</div>
+      {/* ── ARTWORK HEADER ── */}
+      {release.artworkUrl ? (
+        <div style={{ position: "relative", width: "100%", paddingTop: "40%", overflow: "hidden" }}>
+          <img src={release.artworkUrl} alt={release.title} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 40%, #0e1e5e 100%)" }} />
+          <div style={{ position: "absolute", bottom: 20, left: 32 }}>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.6)", letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: 6 }}>{release.label}</div>
+            <h2 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 26, color: "#fff", margin: "0 0 4px", letterSpacing: "-0.01em" }}>{release.title}</h2>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{release.artist}</div>
+          </div>
+        </div>
+      ) : (
+        <div style={{ padding: "44px 32px 0" }}>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.4)", letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: 10 }}>{release.label}</div>
+          <h2 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 28, color: "#fff", margin: "0 0 6px", letterSpacing: "-0.01em" }}>{release.title}</h2>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 0 }}>{release.artist}</div>
+        </div>
+      )}
 
+      <div style={{ padding: release.artworkUrl ? "24px 32px 40px" : "24px 32px 40px" }}>
         {release.description && (
           <p style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.5)", lineHeight: 1.9, marginBottom: 28, borderLeft: "2px solid rgba(255,255,255,0.15)", paddingLeft: 16 }}>{release.description}</p>
         )}
@@ -358,11 +373,11 @@ const AdminModal = ({ onClose, onAddRelease, onDeleteRelease, releases, feedback
   const [form, setForm] = useState({ artist: "", title: "", label: "", genre: "", date: "", description: "", soundcloudUrl: "", spotifyUrl: "", tracks: [], pdfUrl: "", artworkUrl: "" });
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [openRelease, setOpenRelease] = useState(null);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const totalFb = feedbacks.length;
   const avgRating = totalFb ? (feedbacks.reduce((s, f) => s + f.rating, 0) / totalFb).toFixed(1) : "—";
-  const getTitle = (id) => releases.find(r => r.id === id)?.title || id;
 
   const TabBtn = ({ id, label }) => (
     <button onClick={() => setTab(id)} style={{
@@ -397,8 +412,8 @@ const AdminModal = ({ onClose, onAddRelease, onDeleteRelease, releases, feedback
             <div style={{ marginTop: 4 }}>
               <Label>Other Files</Label>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <FileUpload label="Artwork (cover)" accept="image/*" resourceType="image" url={form.artworkUrl} onUploaded={url => set("artworkUrl", url)} />
                 <FileUpload label="Press Kit PDF" accept="application/pdf" resourceType="raw" url={form.pdfUrl} onUploaded={url => set("pdfUrl", url)} />
-                <FileUpload label="Artwork" accept="image/*" resourceType="image" url={form.artworkUrl} onUploaded={url => set("artworkUrl", url)} />
               </div>
             </div>
             {!saved ? (
@@ -417,35 +432,41 @@ const AdminModal = ({ onClose, onAddRelease, onDeleteRelease, releases, feedback
             {releases.length === 0 ? (
               <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.2)", textAlign: "center", padding: "40px 0" }}>No releases uploaded yet.</div>
             ) : releases.map(r => (
-              <div key={r.id} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 14, color: "#fff", marginBottom: 2 }}>{r.title}</div>
-                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.35)" }}>{r.artist} — {r.label}</div>
-                  {r.tracks && r.tracks.length > 0 && (
-                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.2)", marginTop: 3 }}>{r.tracks.length} tracks</div>
-                  )}
-                </div>
-                {confirmDelete === r.id ? (
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,80,80,0.8)" }}>Are you sure?</span>
-                    <button onClick={() => { onDeleteRelease(r.id); setConfirmDelete(null); }} style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.4)", color: "rgba(255,80,80,0.9)", fontFamily: "'DM Mono', monospace", fontSize: 9, padding: "4px 10px", cursor: "pointer" }}>Delete</button>
-                    <button onClick={() => setConfirmDelete(null)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.4)", fontFamily: "'DM Mono', monospace", fontSize: 9, padding: "4px 10px", cursor: "pointer" }}>Cancel</button>
+              <div key={r.id} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    {r.artworkUrl && <img src={r.artworkUrl} alt={r.title} style={{ width: 40, height: 40, objectFit: "cover", flexShrink: 0 }} />}
+                    <div>
+                      <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 14, color: "#fff", marginBottom: 2 }}>{r.title}</div>
+                      <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.35)" }}>{r.artist} — {r.label}</div>
+                      {r.tracks && r.tracks.length > 0 && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.2)", marginTop: 2 }}>{r.tracks.length} tracks</div>}
+                    </div>
                   </div>
-                ) : (
-                  <button onClick={() => setConfirmDelete(r.id)} style={{ background: "none", border: "1px solid rgba(255,80,80,0.25)", color: "rgba(255,80,80,0.6)", fontFamily: "'DM Mono', monospace", fontSize: 9, padding: "5px 12px", cursor: "pointer", transition: "all 0.2s" }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,80,80,0.7)"; e.currentTarget.style.color = "rgba(255,80,80,1)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,80,80,0.25)"; e.currentTarget.style.color = "rgba(255,80,80,0.6)"; }}
-                  >Delete</button>
-                )}
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {confirmDelete === r.id ? (
+                      <>
+                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,80,80,0.8)", alignSelf: "center" }}>Sure?</span>
+                        <button onClick={() => { onDeleteRelease(r.id); setConfirmDelete(null); }} style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.4)", color: "rgba(255,80,80,0.9)", fontFamily: "'DM Mono', monospace", fontSize: 9, padding: "4px 10px", cursor: "pointer" }}>Delete</button>
+                        <button onClick={() => setConfirmDelete(null)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.4)", fontFamily: "'DM Mono', monospace", fontSize: 9, padding: "4px 10px", cursor: "pointer" }}>Cancel</button>
+                      </>
+                    ) : (
+                      <button onClick={() => setConfirmDelete(r.id)} style={{ background: "none", border: "1px solid rgba(255,80,80,0.25)", color: "rgba(255,80,80,0.6)", fontFamily: "'DM Mono', monospace", fontSize: 9, padding: "5px 12px", cursor: "pointer", transition: "all 0.2s" }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,80,80,0.7)"; e.currentTarget.style.color = "rgba(255,80,80,1)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,80,80,0.25)"; e.currentTarget.style.color = "rgba(255,80,80,0.6)"; }}
+                      >Delete</button>
+                    )}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* ── FEEDBACK ── */}
+        {/* ── FEEDBACK — separated by release ── */}
         {tab === "feedback" && (
           <div>
-            <div style={{ display: "flex", gap: 2, marginBottom: 24 }}>
+            {/* global stats */}
+            <div style={{ display: "flex", gap: 2, marginBottom: 28 }}>
               {[["Total feedback", totalFb], ["Avg rating", avgRating], ["Active releases", releases.length]].map(([label, val]) => (
                 <div key={label} style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "16px 14px" }}>
                   <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 24, color: "#fff", marginBottom: 4 }}>{val}</div>
@@ -453,25 +474,59 @@ const AdminModal = ({ onClose, onAddRelease, onDeleteRelease, releases, feedback
                 </div>
               ))}
             </div>
-            {feedbacks.length === 0 ? (
-              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.2)", textAlign: "center", padding: "40px 0" }}>No feedback received yet.</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {[...feedbacks].reverse().map((f, i) => (
-                  <div key={i} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", padding: "16px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "#fff", background: "rgba(255,255,255,0.08)", padding: "2px 8px" }}>{getTitle(f.releaseId)}</span>
-                      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.2)" }}>{new Date(f.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span>
+
+            {/* per-release feedback sections */}
+            {releases.length === 0 ? (
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.2)", textAlign: "center", padding: "40px 0" }}>No releases yet.</div>
+            ) : releases.map(r => {
+              const rFb = feedbacks.filter(f => f.releaseId === r.id);
+              const rAvg = rFb.length ? (rFb.reduce((s, f) => s + f.rating, 0) / rFb.length).toFixed(1) : null;
+              const isOpen = openRelease === r.id;
+              return (
+                <div key={r.id} style={{ marginBottom: 8 }}>
+                  {/* release header — clickable to expand */}
+                  <div onClick={() => setOpenRelease(isOpen ? null : r.id)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", padding: "12px 16px", cursor: "pointer", transition: "background 0.2s" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.08)"}
+                    onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      {r.artworkUrl && <img src={r.artworkUrl} alt={r.title} style={{ width: 32, height: 32, objectFit: "cover" }} />}
+                      <div>
+                        <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 13, color: "#fff" }}>{r.title}</div>
+                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.4)" }}>{r.artist}</div>
+                      </div>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.6)" }}>{f.name}</span>
-                      <StarRating value={f.rating} readonly />
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{ textAlign: "right" }}>
+                        {rAvg && <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 18, color: "#fff" }}>{rAvg}</div>}
+                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em" }}>{rFb.length} feedback</div>
+                      </div>
+                      <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, transition: "transform 0.2s", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
                     </div>
-                    <p style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.4)", lineHeight: 1.7, margin: 0 }}>{f.comment}</p>
                   </div>
-                ))}
-              </div>
-            )}
+
+                  {/* expanded feedback list */}
+                  {isOpen && (
+                    <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderTop: "none" }}>
+                      {rFb.length === 0 ? (
+                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.2)", textAlign: "center", padding: "24px 0" }}>No feedback yet for this release.</div>
+                      ) : [...rFb].reverse().map((f, i) => (
+                        <div key={i} style={{ padding: "16px", borderBottom: i < rFb.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                            <div>
+                              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.7)" }}>{f.name}</span>
+                              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.2)", marginLeft: 10 }}>{new Date(f.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                            </div>
+                            <StarRating value={f.rating} readonly />
+                          </div>
+                          <p style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.4)", lineHeight: 1.7, margin: 0 }}>{f.comment}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -486,35 +541,48 @@ const ReleaseCard = ({ release, feedbacks, onOpen }) => {
   const trackCount = release.tracks ? release.tracks.length : 0;
 
   return (
-    <div onClick={() => onOpen(release)} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", padding: "28px 26px", cursor: "pointer", transition: "all 0.25s", position: "relative" }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.35)"; e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.transform = "translateY(0)"; }}
+    <div onClick={() => onOpen(release)} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", transition: "all 0.25s", position: "relative", overflow: "hidden" }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.35)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.transform = "translateY(0)"; }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
-        <div style={{ flex: 1, paddingRight: 16 }}>
-          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.35)", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 7 }}>{release.label}</div>
-          <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 20, color: "#fff", marginBottom: 4 }}>{release.title}</div>
-          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.45)" }}>{release.artist}</div>
+      {/* artwork */}
+      {release.artworkUrl ? (
+        <div style={{ width: "100%", paddingTop: "56%", position: "relative", overflow: "hidden" }}>
+          <img src={release.artworkUrl} alt={release.title} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover", display: "block", transition: "transform 0.4s" }} />
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 50%, rgba(14,32,96,0.9) 100%)" }} />
+          {avg && (
+            <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(14,32,96,0.85)", border: "1px solid rgba(255,255,255,0.15)", padding: "6px 10px", textAlign: "center" }}>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 18, color: "#fff", lineHeight: 1 }}>{avg}</div>
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 7, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>{relFb.length} fb</div>
+            </div>
+          )}
         </div>
-        {avg && (
-          <div style={{ textAlign: "right", flexShrink: 0 }}>
-            <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 26, color: "#fff", lineHeight: 1 }}>{avg}</div>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.25)", marginTop: 3 }}>{relFb.length} fb</div>
-          </div>
-        )}
+      ) : avg ? (
+        <div style={{ position: "absolute", top: 12, right: 12 }}>
+          <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 22, color: "#fff", lineHeight: 1, textAlign: "right" }}>{avg}</div>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 7, color: "rgba(255,255,255,0.3)", textAlign: "right" }}>{relFb.length} fb</div>
+        </div>
+      ) : null}
+
+      {/* info */}
+      <div style={{ padding: "18px 22px 22px" }}>
+        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.35)", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 6 }}>{release.label}</div>
+        <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 18, color: "#fff", marginBottom: 3 }}>{release.title}</div>
+        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.45)", marginBottom: 14 }}>{release.artist}</div>
+
+        <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
+          {release.genre && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "#fff", background: "rgba(255,255,255,0.1)", padding: "3px 10px", letterSpacing: "0.12em", textTransform: "uppercase" }}>{release.genre}</span>}
+          {release.date && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.25)" }}>{new Date(release.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span>}
+        </div>
+
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {trackCount > 0 && <Badge label={`${trackCount} tracks`} />}
+          {release.pdfUrl && <Badge label="Press Kit" />}
+          {release.soundcloudUrl && <Badge label="SoundCloud" />}
+          {release.spotifyUrl && <Badge label="Spotify" />}
+        </div>
       </div>
-      <div style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap", alignItems: "center" }}>
-        {release.genre && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "#fff", background: "rgba(255,255,255,0.1)", padding: "3px 10px", letterSpacing: "0.12em", textTransform: "uppercase" }}>{release.genre}</span>}
-        {release.date && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.25)" }}>{new Date(release.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span>}
-      </div>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {trackCount > 0 && <Badge label={`${trackCount} tracks`} />}
-        {release.pdfUrl && <Badge label="Press Kit" />}
-        {release.artworkUrl && <Badge label="Artwork" />}
-        {release.soundcloudUrl && <Badge label="SoundCloud" />}
-        {release.spotifyUrl && <Badge label="Spotify" />}
-      </div>
-      <div style={{ position: "absolute", bottom: 20, right: 22, fontFamily: "'DM Mono', monospace", fontSize: 18, color: "rgba(255,255,255,0.15)" }}>→</div>
+      <div style={{ position: "absolute", bottom: 18, right: 18, fontFamily: "'DM Mono', monospace", fontSize: 16, color: "rgba(255,255,255,0.15)" }}>→</div>
     </div>
   );
 };
@@ -534,8 +602,8 @@ export default function App() {
   useEffect(() => {
     const load = async () => {
       try {
-        const r = await window.storage.get("fp6_releases");
-        const f = await window.storage.get("fp6_feedbacks");
+        const r = await window.storage.get("fp7_releases");
+        const f = await window.storage.get("fp7_feedbacks");
         setReleases(r ? JSON.parse(r.value) : DEMO_RELEASES);
         setFeedbacks(f ? JSON.parse(f.value) : []);
       } catch { setReleases(DEMO_RELEASES); setFeedbacks([]); }
@@ -544,8 +612,8 @@ export default function App() {
     load();
   }, []);
 
-  const saveR = async (d) => { try { await window.storage.set("fp6_releases", JSON.stringify(d)); } catch {} };
-  const saveF = async (d) => { try { await window.storage.set("fp6_feedbacks", JSON.stringify(d)); } catch {} };
+  const saveR = async (d) => { try { await window.storage.set("fp7_releases", JSON.stringify(d)); } catch {} };
+  const saveF = async (d) => { try { await window.storage.set("fp7_feedbacks", JSON.stringify(d)); } catch {} };
 
   const addRelease    = (rel) => { const n = [rel, ...releases]; setReleases(n); saveR(n); setShowAdmin(false); };
   const deleteRelease = (id)  => { const n = releases.filter(r => r.id !== id); setReleases(n); saveR(n); };
@@ -601,11 +669,11 @@ export default function App() {
       </div>
 
       {/* RELEASES */}
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 24px 100px" }}>
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "0 24px 100px" }}>
         {releases.length === 0 ? (
           <div style={{ textAlign: "center", padding: "80px 20px", color: "rgba(255,255,255,0.15)", fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: "0.25em" }}>NO RELEASES UPLOADED YET</div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: 2 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 2 }}>
             {releases.map(r => <ReleaseCard key={r.id} release={r} feedbacks={feedbacks} onOpen={setActiveRelease} />)}
           </div>
         )}
