@@ -288,7 +288,7 @@ const LockedRow = ({ label, sub }) => (
   </div>
 );
 
-const LinkRow = ({ label, sub, icon, href, download = false }) => {
+const LinkRow = ({ label, sub, icon, href, download = false, filename }) => {
   const inner = (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid rgba(255,255,255,0.08)", padding: "13px 16px", transition: "border-color 0.2s, background 0.2s", cursor: "pointer", background: "transparent" }}
       onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.4)"; e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
@@ -301,7 +301,28 @@ const LinkRow = ({ label, sub, icon, href, download = false }) => {
       <span style={{ color: "rgba(255,255,255,0.6)", fontSize: 16 }}>{icon}</span>
     </div>
   );
-  return href ? <a href={href} target="_blank" rel="noopener noreferrer" download={download} style={{ textDecoration: "none" }}>{inner}</a> : inner;
+  if (!href) return inner;
+  if (download) {
+    // Force download with correct filename via fetch + blob
+    const handleDownload = async (e) => {
+      e.preventDefault();
+      try {
+        const res = await fetch(href);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename || label;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch {
+        // fallback: open in new tab
+        window.open(href, "_blank");
+      }
+    };
+    return <a href={href} onClick={handleDownload} style={{ textDecoration: "none" }}>{inner}</a>;
+  }
+  return <a href={href} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>{inner}</a>;
 };
 
 const FeedbackForm = ({ release, feedbacks, onFeedback }) => {
@@ -379,30 +400,14 @@ const ReleaseContent = ({ release, feedbacks, onFeedback, submitted, setSubmitte
             <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, letterSpacing: "0.15em", textTransform: "uppercase", color: submitted ? "rgba(120,220,120,0.7)" : "rgba(255,255,255,0.25)" }}>{submitted ? "✓ Unlocked" : "Requires feedback"}</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {hasTracks && release.tracks.map((t, i) => submitted ? <LinkRow key={i} label={t.name} sub="Download audio" icon="↓" href={t.url} download /> : <LockedRow key={i} label={t.name} sub="Download audio" />)}
-            {release.pdfUrl && (submitted ? <LinkRow label="Press Kit PDF" sub="Biography + release info" icon="↓" href={release.pdfUrl} download /> : <LockedRow label="Press Kit PDF" sub="Biography + release info" />)}
-            {release.artworkUrl && (submitted ? <LinkRow label="Artwork" sub="High resolution" icon="↓" href={release.artworkUrl} download /> : <LockedRow label="Artwork" sub="High resolution" />)}
+            {hasTracks && release.tracks.map((t, i) => submitted ? <LinkRow key={i} label={t.name} sub="Download audio" icon="↓" href={t.url} download filename={t.name} /> : <LockedRow key={i} label={t.name} sub="Download audio" />)}
+            {release.pdfUrl && (submitted ? <LinkRow label="Press Kit PDF" sub="Biography + release info" icon="↓" href={release.pdfUrl} download filename={`${release.artist} - ${release.title} - Press Kit.pdf`} /> : <LockedRow label="Press Kit PDF" sub="Biography + release info" />)}
+            {release.artworkUrl && (submitted ? <LinkRow label="Artwork" sub="High resolution" icon="↓" href={release.artworkUrl} download filename={`${release.artist} - ${release.title} - Artwork`} /> : <LockedRow label="Artwork" sub="High resolution" />)}
           </div>
         </div>
       )}
 
       <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 28 }}>
-        {relFb.length > 0 && (
-          <div style={{ marginBottom: 24 }}>
-            <Label>Feedback ({relFb.length})</Label>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {relFb.map((f, i) => (
-                <div key={i} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "14px 16px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.6)" }}>{f.name}</span>
-                    <StarRating value={f.rating} readonly />
-                  </div>
-                  <p style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.4)", lineHeight: 1.7, margin: 0 }}>{f.comment}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
         {!submitted
           ? <FeedbackForm release={release} feedbacks={feedbacks} onFeedback={async (fb) => { await onFeedback(fb); setSubmitted(true); }} />
           : null
@@ -808,7 +813,7 @@ export default function App() {
   const [activeRelease, setActiveRelease] = useState(null);
   const [showAdmin, setShowAdmin] = useState(false);
   const [adminPrompt, setAdminPrompt] = useState(false);
-  const [adminUnlocked, setAdminUnlocked] = useState(false);
+  const [adminUnlocked, setAdminUnlocked] = useState(() => sessionStorage.getItem('fp_admin') === 'true');
   const [adminKey, setAdminKey] = useState("");
   const [adminError, setAdminError] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -832,8 +837,10 @@ export default function App() {
   const addFeedback = async (fb) => { await dbAddFeedback(fb); const f = await dbGetFeedbacks(); setFeedbacks(f.map(mapFeedback)); };
 
   const unlock = () => {
-    if (adminKey === "FP#xQ9!mZ4@press") { setAdminUnlocked(true); setAdminPrompt(false); setShowAdmin(true); setAdminError(false); }
-    else { setAdminError(true); setAdminKey(""); }
+    if (adminKey === "FP#xQ9!mZ4@press") {
+      sessionStorage.setItem('fp_admin', 'true');
+      setAdminUnlocked(true); setAdminPrompt(false); setShowAdmin(true); setAdminError(false);
+    } else { setAdminError(true); setAdminKey(""); }
   };
 
   if (loading) return (
