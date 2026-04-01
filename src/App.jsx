@@ -16,7 +16,7 @@ const DEMO_RELEASES = [
     artworkUrl: "",
     tracks: [], // array di { name, url }
     pdfUrl: "",
-    description: "Una release che attraversa territori industriali con anima groove. Quattro tracce di pressione pura.",
+    description: "Una release che attraversa territori industriali con anima groove. Quattro tracks di pressione pura.",
   }
 ];
 
@@ -168,7 +168,7 @@ const MultiTrackUpload = ({ tracks, onTracksChange }) => {
       );
       onTracksChange([...tracks, ...uploaded]);
     } catch {
-      setError("Upload fallito. Controlla Cloud Name e Upload Preset.");
+      setError("Upload failed. Check Cloud Name and Upload Preset.");
     }
     setUploading(false);
     e.target.value = "";
@@ -180,7 +180,7 @@ const MultiTrackUpload = ({ tracks, onTracksChange }) => {
     <div>
       <input ref={inputRef} type="file" accept="audio/*" multiple onChange={handleFiles} style={{ display: "none" }} />
 
-      {/* tracce già caricate */}
+      {/* tracks già caricate */}
       {tracks.length > 0 && (
         <div style={{ marginBottom: 10 }}>
           {tracks.map((t, i) => (
@@ -206,9 +206,9 @@ const MultiTrackUpload = ({ tracks, onTracksChange }) => {
       >
         <div>
           <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.6)", letterSpacing: "0.1em" }}>
-            {uploading ? "Caricamento tracce..." : `↑ Carica tracce audio (puoi selezionarne più di una)`}
+            {uploading ? "Caricamento tracks..." : `↑ Upload tracks audio (puoi selezionarne più di una)`}
           </div>
-          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.25)", marginTop: 3 }}>MP3 / WAV — selezione multipla supportata</div>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.25)", marginTop: 3 }}>MP3 / WAV — multiple selection supported</div>
         </div>
         {uploading && <div style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.2)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />}
       </div>
@@ -228,7 +228,7 @@ const UploadField = ({ label, accept, resourceType, onUploaded, uploaded }) => {
     if (!file) return;
     setUploading(true); setError("");
     try { onUploaded(await uploadToCloudinary(file, resourceType)); }
-    catch { setError("Upload fallito."); }
+    catch { setError("Upload failed."); }
     setUploading(false);
   };
 
@@ -246,7 +246,7 @@ const UploadField = ({ label, accept, resourceType, onUploaded, uploaded }) => {
       >
         <div>
           <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: uploaded ? "rgba(120,220,120,0.8)" : "rgba(255,255,255,0.6)", letterSpacing: "0.1em" }}>
-            {uploading ? "Caricamento..." : uploaded ? `✓ ${label} caricato` : `↑ Carica ${label}`}
+            {uploading ? "Uploading..." : uploaded ? `✓ ${label} uploaded` : `↑ Upload ${label}`}
           </div>
           <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.25)", marginTop: 3 }}>{accept}</div>
         </div>
@@ -325,7 +325,7 @@ const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
         {/* TRACKLIST — sempre visibile */}
         {hasTracks && (
           <div style={{ marginBottom: 28 }}>
-            <SectionLabel>Tracklist — {release.tracks.length} tracce</SectionLabel>
+            <SectionLabel>Tracklist — {release.tracks.length} tracks</SectionLabel>
             <TracklistPlayer tracks={release.tracks} />
           </div>
         )}
@@ -347,7 +347,7 @@ const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <SectionLabel>Download</SectionLabel>
               <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, letterSpacing: "0.15em", textTransform: "uppercase", color: submitted ? "rgba(120,220,120,0.7)" : "rgba(255,255,255,0.25)" }}>
-                {submitted ? "✓ Sbloccato" : "Richiede feedback"}
+                {submitted ? "✓ Unlocked" : "Requires feedback"}
               </span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -356,8 +356,8 @@ const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
                   ? <DownloadRow key={i} label={t.name} sub="Download audio" icon="↓" href={t.url} />
                   : <LockedRow key={i} label={t.name} sub="Download audio" />
               ))}
-              {release.pdfUrl && (submitted ? <DownloadRow label="Press Kit PDF" sub="Biografia + info release" icon="↓" href={release.pdfUrl} /> : <LockedRow label="Press Kit PDF" sub="Biografia + info release" />)}
-              {release.artworkUrl && (submitted ? <DownloadRow label="Artwork" sub="Alta risoluzione" icon="↓" href={release.artworkUrl} /> : <LockedRow label="Artwork" sub="Alta risoluzione" />)}
+              {release.pdfUrl && (submitted ? <DownloadRow label="Press Kit PDF" sub="Biography + release info" icon="↓" href={release.pdfUrl} /> : <LockedRow label="Press Kit PDF" sub="Biography + release info" />)}
+              {release.artworkUrl && (submitted ? <DownloadRow label="Artwork" sub="High resolution" icon="↓" href={release.artworkUrl} /> : <LockedRow label="Artwork" sub="High resolution" />)}
             </div>
           </div>
         )}
@@ -384,14 +384,14 @@ const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
 
           {!submitted ? (
             <div>
-              <SectionLabel>Il tuo feedback — sblocca i download</SectionLabel>
+              <SectionLabel>Your feedback — unlock downloads</SectionLabel>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <input placeholder="Nome / testata (opzionale)" value={name} onChange={e => setName(e.target.value)} style={iStyle} onFocus={focusStyle} onBlur={blurStyle} />
+                <input placeholder="Name / publication (optional)" value={name} onChange={e => setName(e.target.value)} style={iStyle} onFocus={focusStyle} onBlur={blurStyle} />
                 <div>
                   <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.35)", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 10 }}>Rating *</div>
                   <StarRating value={rating} onChange={setRating} />
                 </div>
-                <textarea placeholder="Il tuo commento sulla release... *" value={comment} onChange={e => setComment(e.target.value)} rows={4} style={{ ...iStyle, resize: "vertical" }} onFocus={focusStyle} onBlur={blurStyle} />
+                <textarea placeholder="Your comment on the release... *" value={comment} onChange={e => setComment(e.target.value)} rows={4} style={{ ...iStyle, resize: "vertical" }} onFocus={focusStyle} onBlur={blurStyle} />
                 <button onClick={handleSubmit} disabled={!rating || !comment.trim()} style={{
                   background: rating && comment.trim() ? "#ffffff" : "rgba(255,255,255,0.06)",
                   border: "none", color: rating && comment.trim() ? "#1d52b8" : "rgba(255,255,255,0.2)",
@@ -399,13 +399,13 @@ const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
                   textTransform: "uppercase", padding: "13px 20px",
                   cursor: rating && comment.trim() ? "pointer" : "not-allowed",
                   transition: "all 0.2s", fontWeight: 700,
-                }}>{rating && comment.trim() ? "Invia e sblocca download →" : "Compila per sbloccare"}</button>
+                }}>{rating && comment.trim() ? "Submit and unlock downloads →" : "Fill in to unlock"}</button>
               </div>
             </div>
           ) : (
             <div style={{ textAlign: "center", padding: "16px 0" }}>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 18, color: "#fff", marginBottom: 6 }}>✓ Grazie per il feedback</div>
-              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: "0.1em" }}>I download sono ora disponibili qui sopra.</div>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 18, color: "#fff", marginBottom: 6 }}>✓ Thank you for your feedback</div>
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: "0.1em" }}>Downloads are now available above.</div>
             </div>
           )}
         </div>
@@ -415,43 +415,129 @@ const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
 };
 
 // ─── ADMIN MODAL ──────────────────────────────────────────────────────────────
-const AdminModal = ({ onClose, onAddRelease }) => {
+const AdminModal = ({ onClose, onAddRelease, onDeleteRelease, releases, feedbacks }) => {
+  const [tab, setTab] = useState("new");
   const [form, setForm] = useState({ artist: "", title: "", label: "", genre: "", date: "", description: "", soundcloudUrl: "", spotifyUrl: "", tracks: [], pdfUrl: "", artworkUrl: "" });
   const [saved, setSaved] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const tabBtn = (id, label) => (
+    <button onClick={() => setTab(id)} style={{
+      background: "none", border: "none", borderBottom: `2px solid ${tab === id ? "#fff" : "transparent"}`,
+      color: tab === id ? "#fff" : "rgba(255,255,255,0.35)", fontFamily: "'DM Mono', monospace",
+      fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", padding: "8px 0",
+      cursor: "pointer", marginRight: 24, transition: "all 0.2s",
+    }}>{label}</button>
+  );
+
+  const getReleaseTitle = (id) => releases.find(r => r.id === id)?.title || id;
+  const totalFeedbacks = feedbacks.length;
+  const avgGlobal = totalFeedbacks
+    ? (feedbacks.reduce((s, f) => s + f.rating, 0) / totalFeedbacks).toFixed(1)
+    : "—";
 
   return (
     <Modal onClose={onClose}>
       <div style={{ padding: "44px 32px 40px" }}>
-        <h2 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 22, color: "#fff", margin: "0 0 28px" }}>Nuova Release</h2>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {[["artist","Artista *"],["title","Titolo *"],["label","Label"],["genre","Genere"],["soundcloudUrl","Link SoundCloud"],["spotifyUrl","Link Spotify"]].map(([k,ph]) => (
-            <input key={k} placeholder={ph} value={form[k]} onChange={e => set(k, e.target.value)} style={iStyle} onFocus={focusStyle} onBlur={blurStyle} />
-          ))}
-          <input type="date" value={form.date} onChange={e => set("date", e.target.value)} style={iStyle} onFocus={focusStyle} onBlur={blurStyle} />
-          <textarea placeholder="Descrizione" value={form.description} onChange={e => set("description", e.target.value)} rows={3} style={{ ...iStyle, resize: "vertical" }} onFocus={focusStyle} onBlur={blurStyle} />
-
-          <div style={{ marginTop: 8 }}>
-            <SectionLabel>Tracce audio</SectionLabel>
-            <MultiTrackUpload tracks={form.tracks} onTracksChange={v => set("tracks", v)} />
-          </div>
-
-          <div style={{ marginTop: 4 }}>
-            <SectionLabel>Altri file</SectionLabel>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <UploadField label="Press Kit PDF" accept="application/pdf" resourceType="raw" uploaded={!!form.pdfUrl} onUploaded={url => set("pdfUrl", url)} />
-              <UploadField label="Artwork" accept="image/*" resourceType="image" uploaded={!!form.artworkUrl} onUploaded={url => set("artworkUrl", url)} />
-            </div>
-          </div>
-
-          {!saved ? (
-            <button onClick={() => { if (!form.artist || !form.title) return; onAddRelease({ ...form, id: `rel_${Date.now()}` }); setSaved(true); }} style={{ background: "#ffffff", border: "none", color: "#1d52b8", fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", padding: "12px 20px", cursor: "pointer", marginTop: 8, fontWeight: 700 }}>
-              Pubblica Release
-            </button>
-          ) : (
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(120,220,120,0.8)", letterSpacing: "0.15em" }}>✓ Release pubblicata.</div>
-          )}
+        <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: 28 }}>
+          {tabBtn("new", "New Release")}
+          {tabBtn("releases", `Releases (${releases.length})`)}
+          {tabBtn("feedback", `Feedback (${totalFeedbacks})`)}
         </div>
+
+        {/* ── TAB: NUOVA RELEASE ── */}
+        {tab === "new" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {[["artist","Artist *"],["title","Title *"],["label","Label"],["genre","Genre"],["soundcloudUrl","SoundCloud Link"],["spotifyUrl","Spotify Link"]].map(([k,ph]) => (
+              <input key={k} placeholder={ph} value={form[k]} onChange={e => set(k, e.target.value)} style={iStyle} onFocus={focusStyle} onBlur={blurStyle} />
+            ))}
+            <input type="date" value={form.date} onChange={e => set("date", e.target.value)} style={iStyle} onFocus={focusStyle} onBlur={blurStyle} />
+            <textarea placeholder="Description" value={form.description} onChange={e => set("description", e.target.value)} rows={3} style={{ ...iStyle, resize: "vertical" }} onFocus={focusStyle} onBlur={blurStyle} />
+            <div style={{ marginTop: 8 }}>
+              <SectionLabel>Audio Tracks</SectionLabel>
+              <MultiTrackUpload tracks={form.tracks} onTracksChange={v => set("tracks", v)} />
+            </div>
+            <div style={{ marginTop: 4 }}>
+              <SectionLabel>Other files</SectionLabel>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <UploadField label="Press Kit PDF" accept="application/pdf" resourceType="raw" uploaded={!!form.pdfUrl} onUploaded={url => set("pdfUrl", url)} />
+                <UploadField label="Artwork" accept="image/*" resourceType="image" uploaded={!!form.artworkUrl} onUploaded={url => set("artworkUrl", url)} />
+              </div>
+            </div>
+            {!saved ? (
+              <button onClick={() => { if (!form.artist || !form.title) return; onAddRelease({ ...form, id: `rel_${Date.now()}` }); setSaved(true); }} style={{ background: "#ffffff", border: "none", color: "#1d52b8", fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", padding: "12px 20px", cursor: "pointer", marginTop: 8, fontWeight: 700 }}>
+                Publish Release
+              </button>
+            ) : (
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(120,220,120,0.8)", letterSpacing: "0.15em" }}>✓ Release published.</div>
+            )}
+          </div>
+        )}
+
+        {/* ── TAB: RELEASE ── */}
+        {tab === "releases" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {releases.length === 0 ? (
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.2)", textAlign: "center", padding: "40px 0" }}>No releases uploaded yet.</div>
+            ) : releases.map(r => (
+              <div key={r.id} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 14, color: "#fff", marginBottom: 2 }}>{r.title}</div>
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.35)", letterSpacing: "0.1em" }}>{r.artist} — {r.label}</div>
+                  {r.tracks && r.tracks.length > 0 && (
+                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.2)", marginTop: 3 }}>{r.tracks.length} tracks</div>
+                  )}
+                </div>
+                {confirmDelete === r.id ? (
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,80,80,0.8)" }}>Are you sure?</span>
+                    <button onClick={() => { onDeleteRelease(r.id); setConfirmDelete(null); }} style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.4)", color: "rgba(255,80,80,0.9)", fontFamily: "'DM Mono', monospace", fontSize: 9, padding: "4px 10px", cursor: "pointer", letterSpacing: "0.1em" }}>Delete</button>
+                    <button onClick={() => setConfirmDelete(null)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.4)", fontFamily: "'DM Mono', monospace", fontSize: 9, padding: "4px 10px", cursor: "pointer", letterSpacing: "0.1em" }}>Cancel</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setConfirmDelete(r.id)} style={{ background: "none", border: "1px solid rgba(255,80,80,0.2)", color: "rgba(255,80,80,0.5)", fontFamily: "'DM Mono', monospace", fontSize: 9, padding: "5px 12px", cursor: "pointer", letterSpacing: "0.1em", transition: "all 0.2s" }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,80,80,0.6)"; e.currentTarget.style.color = "rgba(255,80,80,0.9)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,80,80,0.2)"; e.currentTarget.style.color = "rgba(255,80,80,0.5)"; }}
+                  >Delete</button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── TAB: FEEDBACK ── */}
+        {tab === "feedback" && (
+          <div>
+            <div style={{ display: "flex", gap: 2, marginBottom: 24 }}>
+              {[["Total feedback", totalFeedbacks], ["Avg rating", avgGlobal], ["Active releases", releases.length]].map(([label, val]) => (
+                <div key={label} style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "16px 14px" }}>
+                  <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 24, color: "#fff", marginBottom: 4 }}>{val}</div>
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.3)", letterSpacing: "0.2em", textTransform: "uppercase" }}>{label}</div>
+                </div>
+              ))}
+            </div>
+            {feedbacks.length === 0 ? (
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.2)", textAlign: "center", padding: "40px 0" }}>No feedback received yet.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {[...feedbacks].reverse().map((f, i) => (
+                  <div key={i} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", padding: "16px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "#fff", background: "rgba(255,255,255,0.08)", padding: "2px 8px" }}>{getReleaseTitle(f.releaseId)}</span>
+                      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.2)" }}>{new Date(f.date).toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.6)" }}>{f.name}</span>
+                      <StarRating value={f.rating} readonly />
+                    </div>
+                    <p style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.4)", lineHeight: 1.7, margin: 0 }}>{f.comment}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </Modal>
   );
@@ -486,7 +572,7 @@ const ReleaseCard = ({ release, feedbacks, onOpen }) => {
         {release.date && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.25)" }}>{new Date(release.date).toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" })}</span>}
       </div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {trackCount > 0 && <AssetBadge label={`${trackCount} tracce`} />}
+        {trackCount > 0 && <AssetBadge label={`${trackCount} tracks`} />}
         {release.pdfUrl && <AssetBadge label="Press Kit" />}
         {release.artworkUrl && <AssetBadge label="Artwork" />}
         {release.soundcloudUrl && <AssetBadge label="SoundCloud" />}
@@ -526,6 +612,7 @@ export default function App() {
   const saveFeedbacks = async (d) => { try { await window.storage.set("fp5_feedbacks", JSON.stringify(d)); } catch {} };
   const addRelease = (rel) => { const n = [rel, ...releases]; setReleases(n); saveReleases(n); setShowAdmin(false); };
   const addFeedback = (fb) => { const n = [...feedbacks, fb]; setFeedbacks(n); saveFeedbacks(n); };
+  const deleteRelease = (id) => { const n = releases.filter(r => r.id !== id); setReleases(n); saveReleases(n); };
   const handleAdminUnlock = () => {
     if (adminKey === "futurepressure") { setAdminUnlocked(true); setAdminPrompt(false); setShowAdmin(true); setAdminError(false); }
     else { setAdminError(true); setAdminKey(""); }
@@ -568,14 +655,14 @@ export default function App() {
         <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.3)", letterSpacing: "0.45em", textTransform: "uppercase", marginBottom: 18 }}>Underground Electronic Music</div>
         <h1 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: "clamp(32px, 6vw, 58px)", color: "#fff", letterSpacing: "-0.02em", lineHeight: 1.05, margin: "0 0 20px" }}>Promo Releases</h1>
         <p style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: "0.1em", lineHeight: 2.2, maxWidth: 420, margin: "0 auto" }}>
-          Ascolta in anteprima, lascia il tuo feedback<br />e sblocca i download.
+          Preview, lascia il tuo feedback<br />e sblocca i download.
         </p>
         <div style={{ width: 1, height: 48, background: "rgba(255,255,255,0.15)", margin: "36px auto 0" }} />
       </div>
 
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 24px 100px" }}>
         {releases.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "80px 20px", color: "rgba(255,255,255,0.15)", fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: "0.25em" }}>NESSUNA RELEASE CARICATA</div>
+          <div style={{ textAlign: "center", padding: "80px 20px", color: "rgba(255,255,255,0.15)", fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: "0.25em" }}>NO RELEASES UPLOADED YET</div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: 2 }}>
             {releases.map(r => <ReleaseCard key={r.id} release={r} feedbacks={feedbacks} onOpen={setActiveRelease} />)}
@@ -592,25 +679,19 @@ export default function App() {
       </div>
 
       {activeRelease && <ReleaseModal release={activeRelease} feedbacks={feedbacks} onClose={() => setActiveRelease(null)} onFeedback={addFeedback} />}
-      {showAdmin && <AdminModal onClose={() => setShowAdmin(false)} onAddRelease={addRelease} />}
+      {showAdmin && <AdminModal onClose={() => setShowAdmin(false)} onAddRelease={addRelease} onDeleteRelease={deleteRelease} releases={releases} feedbacks={feedbacks} />}
 
       {adminPrompt && (
         <Modal onClose={() => { setAdminPrompt(false); setAdminKey(""); setAdminError(false); }}>
           <div style={{ padding: "44px 32px 36px" }}>
-            <h2 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 20, color: "#fff", margin: "0 0 24px" }}>Accesso Admin</h2>
+            <h2 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 20, color: "#fff", margin: "0 0 24px" }}>Admin Access</h2>
             <input type="password" placeholder="Password" value={adminKey} onChange={e => { setAdminKey(e.target.value); setAdminError(false); }} onKeyDown={e => e.key === "Enter" && handleAdminUnlock()} style={{ ...iStyle, borderColor: adminError ? "rgba(255,80,80,0.5)" : "rgba(255,255,255,0.1)" }} onFocus={focusStyle} onBlur={blurStyle} />
-            {adminError && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,80,80,0.8)", marginTop: 8 }}>Password errata.</div>}
+            {adminError && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,80,80,0.8)", marginTop: 8 }}>Wrong password.</div>}
             <button onClick={handleAdminUnlock} style={{ marginTop: 14, background: "#fff", border: "none", color: "#1d52b8", fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", padding: "11px 20px", cursor: "pointer", width: "100%", fontWeight: 700 }}>Entra</button>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.2)", marginTop: 12 }}>Password demo: futurepressure</div>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.2)", marginTop: 12 }}>Demo password: futurepressure</div>
           </div>
         </Modal>
       )}
     </div>
   );
 }
-
- 
-       
-      
-            
- 
