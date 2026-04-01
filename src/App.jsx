@@ -4,15 +4,16 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://xetnmzzdlvahh
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY || "sb_publishable_5VEkozv-u4aJoTQKe7gssQ_ZcUqVZzL";
 
 const sb = async (path, options = {}) => {
+  const { prefer, headers: extraHeaders, ...restOptions } = options;
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     headers: {
       "apikey": SUPABASE_KEY,
       "Authorization": `Bearer ${SUPABASE_KEY}`,
       "Content-Type": "application/json",
-      "Prefer": options.prefer || "return=representation",
-      ...options.headers,
+      "Prefer": prefer || "return=representation",
+      ...extraHeaders,
     },
-    ...options,
+    ...restOptions,
   });
   if (!res.ok) { const err = await res.text(); throw new Error(err); }
   const text = await res.text();
@@ -26,7 +27,7 @@ const dbAddRelease = (r) => sb("releases", { method: "POST", body: JSON.stringif
   date: r.date, description: r.description, soundcloud_url: r.soundcloudUrl,
   spotify_url: r.spotifyUrl, artwork_url: r.artworkUrl, pdf_url: r.pdfUrl, tracks: r.tracks,
 }) });
-const dbUpdateRelease = (r) => sb(`releases?id=eq.${r.id}`, { method: "PATCH", body: JSON.stringify({
+const dbUpdateRelease = (r) => sb(`releases?id=eq.${r.id}`, { method: "PATCH", prefer: "return=representation", body: JSON.stringify({
   artist: r.artist, title: r.title, label: r.label, genre: r.genre,
   date: r.date, description: r.description, soundcloud_url: r.soundcloudUrl,
   spotify_url: r.spotifyUrl, artwork_url: r.artworkUrl, pdf_url: r.pdfUrl, tracks: r.tracks,
