@@ -330,6 +330,7 @@ const FeedbackForm = ({ release, feedbacks, onFeedback }) => {
     if (!rating || !comment.trim() || !email.trim()) return;
     setSaving(true);
     await onFeedback({ releaseId: release.id, name: name || "Anonymous", email: email.trim(), rating, comment });
+    localStorage.setItem(`fp_unlocked_${release.id}`, "true");
     setSaving(false);
     setSubmitted(true);
   };
@@ -411,7 +412,7 @@ const ReleaseContent = ({ release, feedbacks, onFeedback, submitted, setSubmitte
 };
 
 const SingleReleaseView = ({ release, feedbacks, onFeedback }) => {
-  const [submitted, setSubmitted] = useState(false);
+  const [submitted, setSubmitted] = useState(() => localStorage.getItem(`fp_unlocked_${release.id}`) === "true");
   return (
     <div style={{ minHeight: "100vh", background: "#0e2060" }}>
       {release.artworkUrl ? (
@@ -451,7 +452,7 @@ const SingleReleaseView = ({ release, feedbacks, onFeedback }) => {
 };
 
 const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
-  const [submitted, setSubmitted] = useState(false);
+  const [submitted, setSubmitted] = useState(() => localStorage.getItem(`fp_unlocked_${release.id}`) === "true");
   return (
     <Modal onClose={onClose}>
       {release.artworkUrl ? (
