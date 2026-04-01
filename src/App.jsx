@@ -32,7 +32,6 @@ const dbAddFeedback = (f) => sb("feedbacks", { method: "POST", body: JSON.string
   release_id: f.releaseId, name: f.name, rating: f.rating, comment: f.comment,
 }) });
 
-// map DB row → app format
 const mapRelease = (r) => ({
   id: r.id, artist: r.artist, title: r.title, label: r.label, genre: r.genre,
   date: r.date, description: r.description, soundcloudUrl: r.soundcloud_url,
@@ -65,7 +64,6 @@ const StarLogo = ({ size = 40, color = "#ffffff" }) => (
   </svg>
 );
 
-// ─── SHARED STYLES ────────────────────────────────────────────────────────────
 const iStyle = {
   background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
   color: "#ffffff", fontFamily: "'DM Mono', monospace", fontSize: 11,
@@ -82,7 +80,6 @@ const Badge = ({ label }) => (
   <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.12)", padding: "2px 8px", letterSpacing: "0.18em", textTransform: "uppercase" }}>{label}</span>
 );
 
-// ─── STAR RATING ──────────────────────────────────────────────────────────────
 const StarRating = ({ value, onChange, readonly = false }) => (
   <div style={{ display: "flex", gap: 4 }}>
     {[1,2,3,4,5].map(n => (
@@ -97,7 +94,6 @@ const StarRating = ({ value, onChange, readonly = false }) => (
   </div>
 );
 
-// ─── TRACK PLAYER ─────────────────────────────────────────────────────────────
 const TrackPlayer = ({ track, index, isPlaying, onPlay }) => {
   const audioRef = useRef(null);
   const [progress, setProgress] = useState(0);
@@ -143,7 +139,6 @@ const Tracklist = ({ tracks }) => {
   return <div>{tracks.map((t, i) => <TrackPlayer key={i} track={t} index={i} isPlaying={playing === i} onPlay={setPlaying} />)}</div>;
 };
 
-// ─── UPLOAD COMPONENTS ────────────────────────────────────────────────────────
 const MultiTrackUpload = ({ tracks, onChange }) => {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -226,7 +221,6 @@ const FileUpload = ({ label, accept, resourceType, url, onUploaded }) => {
   );
 };
 
-// ─── MODAL ────────────────────────────────────────────────────────────────────
 const Modal = ({ onClose, children }) => (
   <div onClick={e => e.target === e.currentTarget && onClose()} style={{ position: "fixed", inset: 0, background: "rgba(8,20,60,0.93)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20, backdropFilter: "blur(6px)" }}>
     <div style={{ background: "#0e1e5e", border: "1px solid rgba(255,255,255,0.12)", width: "100%", maxWidth: 640, maxHeight: "90vh", overflowY: "auto", position: "relative" }}>
@@ -265,7 +259,6 @@ const LinkRow = ({ label, sub, icon, href, download = false }) => {
   return href ? <a href={href} target="_blank" rel="noopener noreferrer" download={download} style={{ textDecoration: "none" }}>{inner}</a> : inner;
 };
 
-// ─── RELEASE MODAL ────────────────────────────────────────────────────────────
 const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
@@ -395,7 +388,6 @@ const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
   );
 };
 
-// ─── ADMIN MODAL ──────────────────────────────────────────────────────────────
 const AdminModal = ({ onClose, onAddRelease, onDeleteRelease, releases, feedbacks }) => {
   const [tab, setTab] = useState("new");
   const [form, setForm] = useState({ artist: "", title: "", label: "", genre: "", date: "", description: "", soundcloudUrl: "", spotifyUrl: "", tracks: [], pdfUrl: "", artworkUrl: "" });
@@ -434,7 +426,6 @@ const AdminModal = ({ onClose, onAddRelease, onDeleteRelease, releases, feedback
           <TabBtn id="feedback" label={`Feedback (${totalFb})`} />
         </div>
 
-        {/* ── NEW RELEASE ── */}
         {tab === "new" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {[["artist","Artist *"],["title","Title *"],["label","Label"],["genre","Genre"],["soundcloudUrl","SoundCloud Link"],["spotifyUrl","Spotify Link"]].map(([k,ph]) => (
@@ -463,7 +454,6 @@ const AdminModal = ({ onClose, onAddRelease, onDeleteRelease, releases, feedback
           </div>
         )}
 
-        {/* ── RELEASES ── */}
         {tab === "releases" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {releases.length === 0 ? (
@@ -499,7 +489,6 @@ const AdminModal = ({ onClose, onAddRelease, onDeleteRelease, releases, feedback
           </div>
         )}
 
-        {/* ── FEEDBACK per release ── */}
         {tab === "feedback" && (
           <div>
             <div style={{ display: "flex", gap: 2, marginBottom: 28 }}>
@@ -566,7 +555,6 @@ const AdminModal = ({ onClose, onAddRelease, onDeleteRelease, releases, feedback
   );
 };
 
-// ─── RELEASE CARD ─────────────────────────────────────────────────────────────
 const ReleaseCard = ({ release, feedbacks, onOpen }) => {
   const relFb = feedbacks.filter(f => f.releaseId === release.id);
   const avg = relFb.length ? (relFb.reduce((s, f) => s + f.rating, 0) / relFb.length).toFixed(1) : null;
@@ -615,7 +603,6 @@ const ReleaseCard = ({ release, feedbacks, onOpen }) => {
   );
 };
 
-// ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [releases, setReleases] = useState([]);
   const [feedbacks, setFeedbacks] = useState([]);
@@ -657,8 +644,11 @@ export default function App() {
   };
 
   const unlock = () => {
-    if (adminKey === "futurepressure") { setAdminUnlocked(true); setAdminPrompt(false); setShowAdmin(true); setAdminError(false); }
-    else { setAdminError(true); setAdminKey(""); }
+    if (adminKey === "FP#xQ9!mZ4@press") {
+      setAdminUnlocked(true); setAdminPrompt(false); setShowAdmin(true); setAdminError(false);
+    } else {
+      setAdminError(true); setAdminKey("");
+    }
   };
 
   if (loading) return (
@@ -728,10 +718,22 @@ export default function App() {
         <Modal onClose={() => { setAdminPrompt(false); setAdminKey(""); setAdminError(false); }}>
           <div style={{ padding: "44px 32px 36px" }}>
             <h2 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 20, color: "#fff", margin: "0 0 24px" }}>Admin Access</h2>
-            <input type="password" placeholder="Password" value={adminKey} onChange={e => { setAdminKey(e.target.value); setAdminError(false); }} onKeyDown={e => e.key === "Enter" && unlock()} style={{ ...iStyle, borderColor: adminError ? "rgba(255,80,80,0.5)" : "rgba(255,255,255,0.1)" }} onFocus={onFocus} onBlur={onBlur} />
+            <input
+              type="password"
+              placeholder="Password"
+              value={adminKey}
+              onChange={e => { setAdminKey(e.target.value); setAdminError(false); }}
+              onKeyDown={e => e.key === "Enter" && unlock()}
+              autoComplete="new-password"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck="false"
+              style={{ ...iStyle, borderColor: adminError ? "rgba(255,80,80,0.5)" : "rgba(255,255,255,0.1)" }}
+              onFocus={onFocus}
+              onBlur={onBlur}
+            />
             {adminError && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,80,80,0.8)", marginTop: 8 }}>Wrong password.</div>}
             <button onClick={unlock} style={{ marginTop: 14, background: "#fff", border: "none", color: "#1d52b8", fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", padding: "11px 20px", cursor: "pointer", width: "100%", fontWeight: 700 }}>Enter</button>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.2)", marginTop: 12 }}>Demo password: futurepressure</div>
           </div>
         </Modal>
       )}
