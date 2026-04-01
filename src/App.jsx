@@ -29,7 +29,7 @@ const dbAddRelease = (r) => sb("releases", { method: "POST", body: JSON.stringif
 }) });
 const dbDeleteRelease = (id) => sb(`releases?id=eq.${id}`, { method: "DELETE", prefer: "" });
 const dbAddFeedback = (f) => sb("feedbacks", { method: "POST", body: JSON.stringify({
-  release_id: f.releaseId, name: f.name, rating: f.rating, comment: f.comment,
+  release_id: f.releaseId, name: f.name, email: f.email, rating: f.rating, comment: f.comment,
 }) });
 
 const mapRelease = (r) => ({
@@ -39,8 +39,8 @@ const mapRelease = (r) => ({
   tracks: r.tracks || [],
 });
 const mapFeedback = (f) => ({
-  id: f.id, releaseId: f.release_id, name: f.name, rating: f.rating,
-  comment: f.comment, date: f.created_at,
+  id: f.id, releaseId: f.release_id, name: f.name, email: f.email || "",
+  rating: f.rating, email: f.email || "", comment: f.comment, date: f.created_at,
 });
 
 // ─── CLOUDINARY ───────────────────────────────────────────────────────────────
@@ -270,6 +270,7 @@ const SingleReleaseView = ({ release, feedbacks, onFeedback, onBack }) => {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
   const relFb = feedbacks.filter(f => f.releaseId === release.id);
@@ -277,9 +278,9 @@ const SingleReleaseView = ({ release, feedbacks, onFeedback, onBack }) => {
   const hasDownloads = hasTracks || release.pdfUrl || release.artworkUrl;
 
   const submit = async () => {
-    if (!rating || !comment.trim()) return;
+    if (!rating || !comment.trim() || !email.trim()) return;
     setSaving(true);
-    await onFeedback({ releaseId: release.id, name: name || "Anonymous", rating, comment });
+    await onFeedback({ releaseId: release.id, name: name || "Anonymous", email: email.trim(), rating, comment });
     setSaving(false);
     setSubmitted(true);
   };
@@ -380,19 +381,20 @@ const SingleReleaseView = ({ release, feedbacks, onFeedback, onBack }) => {
               <Label>Your feedback — unlock downloads</Label>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <input placeholder="Name / publication (optional)" value={name} onChange={e => setName(e.target.value)} style={iStyle} onFocus={onFocus} onBlur={onBlur} />
+                <input placeholder="Email *" type="email" value={email} onChange={e => setEmail(e.target.value)} style={iStyle} onFocus={onFocus} onBlur={onBlur} />
                 <div>
                   <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.35)", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 10 }}>Rating *</div>
                   <StarRating value={rating} onChange={setRating} />
                 </div>
                 <textarea placeholder="Your comment on the release... *" value={comment} onChange={e => setComment(e.target.value)} rows={4} style={{ ...iStyle, resize: "vertical" }} onFocus={onFocus} onBlur={onBlur} />
-                <button onClick={submit} disabled={!rating || !comment.trim() || saving} style={{
-                  background: rating && comment.trim() && !saving ? "#ffffff" : "rgba(255,255,255,0.06)",
-                  border: "none", color: rating && comment.trim() && !saving ? "#1d52b8" : "rgba(255,255,255,0.2)",
+                <button onClick={submit} disabled={!rating || !comment.trim() || !email.trim() || saving} style={{
+                  background: rating && comment.trim() && email.trim() && !saving ? "#ffffff" : "rgba(255,255,255,0.06)",
+                  border: "none", color: rating && comment.trim() && email.trim() && !saving ? "#1d52b8" : "rgba(255,255,255,0.2)",
                   fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: "0.2em",
                   textTransform: "uppercase", padding: "14px 20px",
-                  cursor: rating && comment.trim() && !saving ? "pointer" : "not-allowed",
+                  cursor: rating && comment.trim() && email.trim() && !saving ? "pointer" : "not-allowed",
                   transition: "all 0.2s", fontWeight: 700,
-                }}>{saving ? "Saving..." : rating && comment.trim() ? "Submit and unlock downloads →" : "Fill in to unlock"}</button>
+                }}>{saving ? "Saving..." : rating && comment.trim() && email.trim() ? "Submit and unlock downloads →" : "Fill in to unlock"}</button>
               </div>
             </div>
           ) : (
@@ -421,6 +423,7 @@ const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
   const relFb = feedbacks.filter(f => f.releaseId === release.id);
@@ -428,9 +431,9 @@ const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
   const hasDownloads = hasTracks || release.pdfUrl || release.artworkUrl;
 
   const submit = async () => {
-    if (!rating || !comment.trim()) return;
+    if (!rating || !comment.trim() || !email.trim()) return;
     setSaving(true);
-    await onFeedback({ releaseId: release.id, name: name || "Anonymous", rating, comment });
+    await onFeedback({ releaseId: release.id, name: name || "Anonymous", email: email.trim(), rating, comment });
     setSaving(false);
     setSubmitted(true);
   };
@@ -501,19 +504,20 @@ const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
               <Label>Your feedback — unlock downloads</Label>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <input placeholder="Name / publication (optional)" value={name} onChange={e => setName(e.target.value)} style={iStyle} onFocus={onFocus} onBlur={onBlur} />
+                <input placeholder="Email *" type="email" value={email} onChange={e => setEmail(e.target.value)} style={iStyle} onFocus={onFocus} onBlur={onBlur} />
                 <div>
                   <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.35)", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 10 }}>Rating *</div>
                   <StarRating value={rating} onChange={setRating} />
                 </div>
                 <textarea placeholder="Your comment on the release... *" value={comment} onChange={e => setComment(e.target.value)} rows={4} style={{ ...iStyle, resize: "vertical" }} onFocus={onFocus} onBlur={onBlur} />
-                <button onClick={submit} disabled={!rating || !comment.trim() || saving} style={{
-                  background: rating && comment.trim() && !saving ? "#ffffff" : "rgba(255,255,255,0.06)",
-                  border: "none", color: rating && comment.trim() && !saving ? "#1d52b8" : "rgba(255,255,255,0.2)",
+                <button onClick={submit} disabled={!rating || !comment.trim() || !email.trim() || saving} style={{
+                  background: rating && comment.trim() && email.trim() && !saving ? "#ffffff" : "rgba(255,255,255,0.06)",
+                  border: "none", color: rating && comment.trim() && email.trim() && !saving ? "#1d52b8" : "rgba(255,255,255,0.2)",
                   fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: "0.2em",
                   textTransform: "uppercase", padding: "13px 20px",
-                  cursor: rating && comment.trim() && !saving ? "pointer" : "not-allowed",
+                  cursor: rating && comment.trim() && email.trim() && !saving ? "pointer" : "not-allowed",
                   transition: "all 0.2s", fontWeight: 700,
-                }}>{saving ? "Saving..." : rating && comment.trim() ? "Submit and unlock downloads →" : "Fill in to unlock"}</button>
+                }}>{saving ? "Saving..." : rating && comment.trim() && email.trim() ? "Submit and unlock downloads →" : "Fill in to unlock"}</button>
               </div>
             </div>
           ) : (
@@ -665,6 +669,7 @@ const AdminModal = ({ onClose, onAddRelease, onDeleteRelease, releases, feedback
           <TabBtn id="releases" label={`Releases (${releases.length})`} />
           <TabBtn id="feedback" label={`Feedback (${totalFb})`} />
           <TabBtn id="email" label="Email" />
+          <TabBtn id="contacts" label="Contacts" />
         </div>
 
         {tab === "new" && (
@@ -790,6 +795,85 @@ const AdminModal = ({ onClose, onAddRelease, onDeleteRelease, releases, feedback
                           <p style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.4)", lineHeight: 1.7, margin: 0 }}>{f.comment}</p>
                         </div>
                       ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+
+        {/* ── CONTACTS / MAILING LIST ── */}
+        {tab === "contacts" && (
+          <div>
+            {/* per release contact lists */}
+            {releases.length === 0 ? (
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.2)", textAlign: "center", padding: "40px 0" }}>No releases yet.</div>
+            ) : releases.map(r => {
+              const rFb = feedbacks.filter(f => f.releaseId === r.id && f.email);
+              const exportCSV = () => {
+                const rows = [["Name","Email","Rating","Comment","Date"]];
+                rFb.forEach(f => rows.push([
+                  f.name || "Anonymous",
+                  f.email || "",
+                  f.rating,
+                  (f.comment || "").replace(/,/g,"；"),
+                  new Date(f.date).toLocaleDateString("en-GB")
+                ]));
+                const csv = rows.map(r => r.map(v => `"${v}"`).join(",")).join("\n");
+                const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `${r.artist} - ${r.title} - contacts.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+              };
+              const isOpen = openRelease === r.id + "_contacts";
+              return (
+                <div key={r.id} style={{ marginBottom: 8 }}>
+                  <div onClick={() => setOpenRelease(isOpen ? null : r.id + "_contacts")} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", padding: "12px 16px", cursor: "pointer" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.08)"}
+                    onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      {r.artworkUrl && <img src={r.artworkUrl} alt={r.title} style={{ width: 32, height: 32, objectFit: "cover" }} />}
+                      <div>
+                        <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 13, color: "#fff" }}>{r.title}</div>
+                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.4)" }}>{r.artist}</div>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 18, color: "#fff" }}>{rFb.length}</div>
+                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.3)" }}>contacts</div>
+                      </div>
+                      <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, display: "inline-block", transition: "transform 0.2s", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
+                    </div>
+                  </div>
+                  {isOpen && (
+                    <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderTop: "none" }}>
+                      {rFb.length === 0 ? (
+                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.2)", textAlign: "center", padding: "24px 0" }}>No contacts yet for this release.</div>
+                      ) : (
+                        <>
+                          <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "flex-end" }}>
+                            <button onClick={exportCSV} style={{ background: "#fff", border: "none", color: "#1a3a8c", fontFamily: "'DM Mono', monospace", fontSize: 9, letterSpacing: "0.15em", textTransform: "uppercase", padding: "8px 16px", cursor: "pointer", fontWeight: 700 }}>
+                              ↓ Export CSV / Excel
+                            </button>
+                          </div>
+                          {rFb.map((f, i) => (
+                            <div key={i} style={{ padding: "12px 16px", borderBottom: i < rFb.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <div>
+                                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.8)" }}>{f.email}</div>
+                                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.3)", marginTop: 2 }}>{f.name || "Anonymous"} · ★{f.rating} · {new Date(f.date).toLocaleDateString("en-GB")}</div>
+                              </div>
+                              <button onClick={() => navigator.clipboard.writeText(f.email)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)", fontFamily: "'DM Mono', monospace", fontSize: 8, padding: "3px 8px", cursor: "pointer", letterSpacing: "0.1em" }}>Copy</button>
+                            </div>
+                          ))}
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
