@@ -303,24 +303,17 @@ const LinkRow = ({ label, sub, icon, href, download = false, filename }) => {
   );
   if (!href) return inner;
   if (download) {
-    // Force download with correct filename via fetch + blob
-    const handleDownload = async (e) => {
-      e.preventDefault();
-      try {
-        const res = await fetch(href);
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename || label;
-        a.click();
-        URL.revokeObjectURL(url);
-      } catch {
-        // fallback: open in new tab
-        window.open(href, "_blank");
+    // Use Cloudinary fl_attachment to force download with correct filename
+    const getDownloadUrl = (url, name) => {
+      if (!url) return url;
+      const cleanName = (name || label).replace(/[^a-zA-Z0-9._\-\s]/g, "").replace(/\s+/g, "_");
+      // Insert fl_attachment:filename into Cloudinary URL
+      if (url.includes("cloudinary.com")) {
+        return url.replace("/upload/", `/upload/fl_attachment:${cleanName}/`);
       }
+      return url;
     };
-    return <a href={href} onClick={handleDownload} style={{ textDecoration: "none" }}>{inner}</a>;
+    return <a href={getDownloadUrl(href, filename)} target="_blank" rel="noopener noreferrer" download={filename || label} style={{ textDecoration: "none" }}>{inner}</a>;
   }
   return <a href={href} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>{inner}</a>;
 };
