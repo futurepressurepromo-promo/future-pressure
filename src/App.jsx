@@ -537,7 +537,99 @@ const AdminModal = ({ onClose, onAddRelease, onDeleteRelease, releases, feedback
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [openRelease, setOpenRelease] = useState(null);
   const [copied, setCopied] = useState(null);
+  const [emailRelease, setEmailRelease] = useState(null);
+  const [emailCopied, setEmailCopied] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const generateEmailHtml = (r) => {
+    const promoUrl = getReleaseUrl(r.id);
+    const trackList = r.tracks && r.tracks.length > 0
+      ? r.tracks.map((t, i) => `<tr><td style="padding:6px 0;font-family:'Courier New',monospace;font-size:12px;color:#555;border-bottom:1px solid #f0f0f0;">${String(i+1).padStart(2,'0')}. ${t.name}</td></tr>`).join('')
+      : '';
+    return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${r.title} — Future Pressure Promo</title></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:32px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;max-width:600px;width:100%;">
+
+  <!-- HEADER -->
+  <tr><td style="background:#1a3a8c;padding:20px 32px;text-align:left;">
+    <table cellpadding="0" cellspacing="0"><tr>
+      <td style="width:28px;height:28px;margin-right:10px;">
+        <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M52 2 L56 44 L95 36 L59 52 L80 92 L50 59 L21 98 L44 56 L6 65 L43 48 L19 11 L51 44 Z" fill="white"/>
+        </svg>
+      </td>
+      <td style="padding-left:10px;">
+        <div style="font-family:Arial,sans-serif;font-weight:900;font-size:14px;color:#ffffff;letter-spacing:0.15em;text-transform:uppercase;">Future Pressure</div>
+        <div style="font-family:'Courier New',monospace;font-size:9px;color:rgba(255,255,255,0.5);letter-spacing:0.2em;text-transform:uppercase;margin-top:2px;">Press & Promo Agency</div>
+      </td>
+    </tr></table>
+  </td></tr>
+
+  <!-- ARTWORK -->
+  ${r.artworkUrl ? `<tr><td style="padding:0;"><img src="${r.artworkUrl}" alt="${r.title}" width="600" style="width:100%;max-width:600px;height:auto;display:block;"></td></tr>` : ''}
+
+  <!-- RELEASE INFO -->
+  <tr><td style="padding:32px 32px 24px;">
+    <div style="font-family:'Courier New',monospace;font-size:10px;color:#1a3a8c;letter-spacing:0.25em;text-transform:uppercase;margin-bottom:10px;">${r.label || 'Promo'}</div>
+    <h1 style="margin:0 0 8px;font-family:Arial,sans-serif;font-size:28px;font-weight:900;color:#0d1f3c;letter-spacing:-0.01em;line-height:1.1;">${r.title}</h1>
+    <div style="font-family:'Courier New',monospace;font-size:13px;color:#666;margin-bottom:20px;">${r.artist}</div>
+    ${r.genre ? `<div style="display:inline-block;font-family:'Courier New',monospace;font-size:10px;color:#1a3a8c;background:#e8eeff;padding:4px 12px;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:20px;">${r.genre}</div>` : ''}
+    ${r.description ? `<p style="font-family:'Courier New',monospace;font-size:12px;color:#555;line-height:1.8;margin:16px 0 0;padding-left:14px;border-left:3px solid #1a3a8c;">${r.description}</p>` : ''}
+  </td></tr>
+
+  <!-- TRACKLIST -->
+  ${trackList ? `<tr><td style="padding:0 32px 24px;">
+    <div style="font-family:'Courier New',monospace;font-size:9px;color:#999;letter-spacing:0.25em;text-transform:uppercase;margin-bottom:12px;">Tracklist</div>
+    <table width="100%" cellpadding="0" cellspacing="0">${trackList}</table>
+  </td></tr>` : ''}
+
+  <!-- DIVIDER -->
+  <tr><td style="padding:0 32px;"><hr style="border:none;border-top:1px solid #eee;margin:0;"></td></tr>
+
+  <!-- CTA -->
+  <tr><td style="padding:32px;text-align:center;">
+    <div style="font-family:'Courier New',monospace;font-size:11px;color:#888;margin-bottom:20px;line-height:1.7;">
+      Here is your promo link — please do not share this publicly.
+    </div>
+    <a href="${promoUrl}" style="display:inline-block;background:#1a3a8c;color:#ffffff;font-family:'Courier New',monospace;font-size:12px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;text-decoration:none;padding:14px 32px;">
+      → Access Promo
+    </a>
+    <div style="margin-top:20px;font-family:'Courier New',monospace;font-size:10px;color:#aaa;">
+      Your feedback is much appreciated.
+    </div>
+  </td></tr>
+
+  <!-- FOOTER -->
+  <tr><td style="background:#0d1f3c;padding:20px 32px;text-align:center;">
+    <div style="font-family:'Courier New',monospace;font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:0.2em;text-transform:uppercase;">Future Pressure © 2026 — Press & Promo Agency</div>
+  </td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
+  };
+
+  const copyEmailHtml = (r) => {
+    navigator.clipboard.writeText(generateEmailHtml(r));
+    setEmailCopied(true);
+    setTimeout(() => setEmailCopied(false), 2000);
+  };
+
+  const downloadEmailHtml = (r) => {
+    const blob = new Blob([generateEmailHtml(r)], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${r.artist} - ${r.title} - promo-email.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const totalFb = feedbacks.length;
   const avgRating = totalFb ? (feedbacks.reduce((s, f) => s + f.rating, 0) / totalFb).toFixed(1) : "—";
@@ -572,6 +664,7 @@ const AdminModal = ({ onClose, onAddRelease, onDeleteRelease, releases, feedback
           <TabBtn id="new" label="New Release" />
           <TabBtn id="releases" label={`Releases (${releases.length})`} />
           <TabBtn id="feedback" label={`Feedback (${totalFb})`} />
+          <TabBtn id="email" label="Email" />
         </div>
 
         {tab === "new" && (
@@ -702,6 +795,65 @@ const AdminModal = ({ onClose, onAddRelease, onDeleteRelease, releases, feedback
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* ── EMAIL GENERATOR ── */}
+        {tab === "email" && (
+          <div>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.35)", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 16 }}>
+              Select a release to generate the promo email
+            </div>
+            {releases.length === 0 ? (
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.2)", textAlign: "center", padding: "40px 0" }}>No releases yet.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {releases.map(r => (
+                  <div key={r.id} style={{ background: emailRelease?.id === r.id ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)", border: `1px solid ${emailRelease?.id === r.id ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.08)"}`, padding: "14px 16px", cursor: "pointer", transition: "all 0.2s" }}
+                    onClick={() => setEmailRelease(r)}
+                    onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
+                    onMouseLeave={e => e.currentTarget.style.background = emailRelease?.id === r.id ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)"}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      {r.artworkUrl && <img src={r.artworkUrl} alt={r.title} style={{ width: 36, height: 36, objectFit: "cover", flexShrink: 0 }} />}
+                      <div>
+                        <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 13, color: "#fff" }}>{r.title}</div>
+                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.4)" }}>{r.artist}</div>
+                      </div>
+                      {emailRelease?.id === r.id && <span style={{ marginLeft: "auto", color: "rgba(120,220,120,0.8)", fontSize: 14 }}>✓</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {emailRelease && (
+              <div style={{ marginTop: 24, padding: 20, background: "rgba(26,58,140,0.2)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.5)", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 14 }}>
+                  Email ready for: {emailRelease.title}
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => copyEmailHtml(emailRelease)} style={{
+                    flex: 1, background: emailCopied ? "rgba(120,220,120,0.15)" : "rgba(255,255,255,0.06)",
+                    border: `1px solid ${emailCopied ? "rgba(120,220,120,0.4)" : "rgba(255,255,255,0.2)"}`,
+                    color: emailCopied ? "rgba(120,220,120,0.9)" : "#fff",
+                    fontFamily: "'DM Mono', monospace", fontSize: 9, letterSpacing: "0.15em",
+                    textTransform: "uppercase", padding: "10px", cursor: "pointer", transition: "all 0.2s",
+                  }}>{emailCopied ? "✓ Copied!" : "Copy HTML"}</button>
+                  <button onClick={() => downloadEmailHtml(emailRelease)} style={{
+                    flex: 1, background: "#fff", border: "none", color: "#1a3a8c",
+                    fontFamily: "'DM Mono', monospace", fontSize: 9, letterSpacing: "0.15em",
+                    textTransform: "uppercase", padding: "10px", cursor: "pointer", fontWeight: 700, transition: "opacity 0.2s",
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.opacity = "0.85"}
+                    onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+                  >↓ Download .html</button>
+                </div>
+                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.25)", marginTop: 12, lineHeight: 1.8 }}>
+                  Copy HTML → paste in Gmail (More options → Paste as HTML) or download and open in browser to copy the formatted email.
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
