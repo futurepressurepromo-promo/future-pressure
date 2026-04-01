@@ -57,6 +57,9 @@ const uploadFile = async (file, resourceType) => {
   return (await res.json()).secure_url;
 };
 
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+const getReleaseUrl = (id) => `${window.location.origin}${window.location.pathname}?release=${id}`;
+
 // ─── STAR LOGO ────────────────────────────────────────────────────────────────
 const StarLogo = ({ size = 40, color = "#ffffff" }) => (
   <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
@@ -94,6 +97,7 @@ const StarRating = ({ value, onChange, readonly = false }) => (
   </div>
 );
 
+// ─── TRACK PLAYER ─────────────────────────────────────────────────────────────
 const TrackPlayer = ({ track, index, isPlaying, onPlay }) => {
   const audioRef = useRef(null);
   const [progress, setProgress] = useState(0);
@@ -139,6 +143,7 @@ const Tracklist = ({ tracks }) => {
   return <div>{tracks.map((t, i) => <TrackPlayer key={i} track={t} index={i} isPlaying={playing === i} onPlay={setPlaying} />)}</div>;
 };
 
+// ─── UPLOAD COMPONENTS ────────────────────────────────────────────────────────
 const MultiTrackUpload = ({ tracks, onChange }) => {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -221,6 +226,7 @@ const FileUpload = ({ label, accept, resourceType, url, onUploaded }) => {
   );
 };
 
+// ─── MODAL ────────────────────────────────────────────────────────────────────
 const Modal = ({ onClose, children }) => (
   <div onClick={e => e.target === e.currentTarget && onClose()} style={{ position: "fixed", inset: 0, background: "rgba(8,20,60,0.93)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20, backdropFilter: "blur(6px)" }}>
     <div style={{ background: "#0e1e5e", border: "1px solid rgba(255,255,255,0.12)", width: "100%", maxWidth: 640, maxHeight: "90vh", overflowY: "auto", position: "relative" }}>
@@ -259,6 +265,158 @@ const LinkRow = ({ label, sub, icon, href, download = false }) => {
   return href ? <a href={href} target="_blank" rel="noopener noreferrer" download={download} style={{ textDecoration: "none" }}>{inner}</a> : inner;
 };
 
+// ─── SINGLE RELEASE VIEW (quando arriva da link diretto) ──────────────────────
+const SingleReleaseView = ({ release, feedbacks, onFeedback, onBack }) => {
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [name, setName] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const relFb = feedbacks.filter(f => f.releaseId === release.id);
+  const hasTracks = release.tracks && release.tracks.length > 0;
+  const hasDownloads = hasTracks || release.pdfUrl || release.artworkUrl;
+
+  const submit = async () => {
+    if (!rating || !comment.trim()) return;
+    setSaving(true);
+    await onFeedback({ releaseId: release.id, name: name || "Anonymous", rating, comment });
+    setSaving(false);
+    setSubmitted(true);
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#0e2060" }}>
+      {/* artwork hero */}
+      {release.artworkUrl ? (
+        <div style={{ position: "relative", width: "100%", paddingTop: "45%", overflow: "hidden" }}>
+          <img src={release.artworkUrl} alt={release.title} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(14,32,96,0.3) 0%, transparent 40%, #0e2060 100%)" }} />
+          {/* nav overlay */}
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, padding: "20px 32px", display: "flex", alignItems: "center", gap: 14 }}>
+            <StarLogo size={28} />
+            <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 13, color: "#fff", letterSpacing: "0.08em", textTransform: "uppercase" }}>Future Pressure</span>
+          </div>
+        </div>
+      ) : (
+        <nav style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", padding: "16px 32px", display: "flex", alignItems: "center", gap: 14, background: "rgba(14,32,96,0.95)" }}>
+          <StarLogo size={30} />
+          <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 13, color: "#fff", letterSpacing: "0.08em", textTransform: "uppercase" }}>Future Pressure</span>
+        </nav>
+      )}
+
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "40px 24px 80px" }}>
+        {/* header */}
+        <div style={{ marginBottom: 32 }}>
+          {release.label && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.4)", letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: 10 }}>{release.label}</div>}
+          <h1 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: "clamp(28px, 5vw, 44px)", color: "#fff", margin: "0 0 8px", letterSpacing: "-0.02em", lineHeight: 1.1 }}>{release.title}</h1>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 14 }}>{release.artist}</div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            {release.genre && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "#fff", background: "rgba(255,255,255,0.1)", padding: "3px 10px", letterSpacing: "0.12em", textTransform: "uppercase" }}>{release.genre}</span>}
+            {release.date && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.3)" }}>{new Date(release.date).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}</span>}
+          </div>
+        </div>
+
+        {release.description && (
+          <p style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.5)", lineHeight: 2, marginBottom: 36, borderLeft: "2px solid rgba(255,255,255,0.15)", paddingLeft: 18 }}>{release.description}</p>
+        )}
+
+        {hasTracks && (
+          <div style={{ marginBottom: 32 }}>
+            <Label>Tracklist — {release.tracks.length} tracks</Label>
+            <Tracklist tracks={release.tracks} />
+          </div>
+        )}
+
+        {(release.soundcloudUrl || release.spotifyUrl) && (
+          <div style={{ marginBottom: 32 }}>
+            <Label>Streaming</Label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {release.soundcloudUrl && <LinkRow label="SoundCloud" sub={release.soundcloudUrl} icon="→" href={release.soundcloudUrl} />}
+              {release.spotifyUrl && <LinkRow label="Spotify" sub={release.spotifyUrl} icon="→" href={release.spotifyUrl} />}
+            </div>
+          </div>
+        )}
+
+        {/* downloads gated */}
+        {hasDownloads && (
+          <div style={{ marginBottom: 36 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <Label>Downloads</Label>
+              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, letterSpacing: "0.15em", textTransform: "uppercase", color: submitted ? "rgba(120,220,120,0.7)" : "rgba(255,255,255,0.25)" }}>
+                {submitted ? "✓ Unlocked" : "Requires feedback"}
+              </span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {hasTracks && release.tracks.map((t, i) =>
+                submitted ? <LinkRow key={i} label={t.name} sub="Download audio" icon="↓" href={t.url} download /> : <LockedRow key={i} label={t.name} sub="Download audio" />
+              )}
+              {release.pdfUrl && (submitted ? <LinkRow label="Press Kit PDF" sub="Biography + release info" icon="↓" href={release.pdfUrl} download /> : <LockedRow label="Press Kit PDF" sub="Biography + release info" />)}
+              {release.artworkUrl && (submitted ? <LinkRow label="Artwork" sub="High resolution" icon="↓" href={release.artworkUrl} download /> : <LockedRow label="Artwork" sub="High resolution" />)}
+            </div>
+          </div>
+        )}
+
+        {/* feedback */}
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 32 }}>
+          {relFb.length > 0 && (
+            <div style={{ marginBottom: 28 }}>
+              <Label>Feedback ({relFb.length})</Label>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {relFb.map((f, i) => (
+                  <div key={i} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "14px 16px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.6)" }}>{f.name}</span>
+                      <StarRating value={f.rating} readonly />
+                    </div>
+                    <p style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.4)", lineHeight: 1.7, margin: 0 }}>{f.comment}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!submitted ? (
+            <div>
+              <Label>Your feedback — unlock downloads</Label>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <input placeholder="Name / publication (optional)" value={name} onChange={e => setName(e.target.value)} style={iStyle} onFocus={onFocus} onBlur={onBlur} />
+                <div>
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.35)", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 10 }}>Rating *</div>
+                  <StarRating value={rating} onChange={setRating} />
+                </div>
+                <textarea placeholder="Your comment on the release... *" value={comment} onChange={e => setComment(e.target.value)} rows={4} style={{ ...iStyle, resize: "vertical" }} onFocus={onFocus} onBlur={onBlur} />
+                <button onClick={submit} disabled={!rating || !comment.trim() || saving} style={{
+                  background: rating && comment.trim() && !saving ? "#ffffff" : "rgba(255,255,255,0.06)",
+                  border: "none", color: rating && comment.trim() && !saving ? "#1d52b8" : "rgba(255,255,255,0.2)",
+                  fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: "0.2em",
+                  textTransform: "uppercase", padding: "14px 20px",
+                  cursor: rating && comment.trim() && !saving ? "pointer" : "not-allowed",
+                  transition: "all 0.2s", fontWeight: 700,
+                }}>{saving ? "Saving..." : rating && comment.trim() ? "Submit and unlock downloads →" : "Fill in to unlock"}</button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ textAlign: "center", padding: "24px 0" }}>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 22, color: "#fff", marginBottom: 8 }}>✓ Thank you for your feedback</div>
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.4)" }}>Downloads are now available above.</div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* footer */}
+      <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "20px 32px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <StarLogo size={16} color="rgba(255,255,255,0.2)" />
+          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.2)", letterSpacing: "0.2em", textTransform: "uppercase" }}>Future Pressure © 2026</span>
+        </div>
+        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.15)", letterSpacing: "0.15em" }}>Press & Promo Agency</span>
+      </div>
+    </div>
+  );
+};
+
+// ─── RELEASE MODAL (homepage) ─────────────────────────────────────────────────
 const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
@@ -296,19 +454,9 @@ const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
           <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{release.artist}</div>
         </div>
       )}
-
       <div style={{ padding: "24px 32px 40px" }}>
-        {release.description && (
-          <p style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.5)", lineHeight: 1.9, marginBottom: 28, borderLeft: "2px solid rgba(255,255,255,0.15)", paddingLeft: 16 }}>{release.description}</p>
-        )}
-
-        {hasTracks && (
-          <div style={{ marginBottom: 28 }}>
-            <Label>Tracklist — {release.tracks.length} tracks</Label>
-            <Tracklist tracks={release.tracks} />
-          </div>
-        )}
-
+        {release.description && <p style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.5)", lineHeight: 1.9, marginBottom: 28, borderLeft: "2px solid rgba(255,255,255,0.15)", paddingLeft: 16 }}>{release.description}</p>}
+        {hasTracks && <div style={{ marginBottom: 28 }}><Label>Tracklist — {release.tracks.length} tracks</Label><Tracklist tracks={release.tracks} /></div>}
         {(release.soundcloudUrl || release.spotifyUrl) && (
           <div style={{ marginBottom: 28 }}>
             <Label>Streaming</Label>
@@ -318,25 +466,19 @@ const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
             </div>
           </div>
         )}
-
         {hasDownloads && (
           <div style={{ marginBottom: 32 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <Label>Downloads</Label>
-              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, letterSpacing: "0.15em", textTransform: "uppercase", color: submitted ? "rgba(120,220,120,0.7)" : "rgba(255,255,255,0.25)" }}>
-                {submitted ? "✓ Unlocked" : "Requires feedback"}
-              </span>
+              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, letterSpacing: "0.15em", textTransform: "uppercase", color: submitted ? "rgba(120,220,120,0.7)" : "rgba(255,255,255,0.25)" }}>{submitted ? "✓ Unlocked" : "Requires feedback"}</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {hasTracks && release.tracks.map((t, i) =>
-                submitted ? <LinkRow key={i} label={t.name} sub="Download audio" icon="↓" href={t.url} download /> : <LockedRow key={i} label={t.name} sub="Download audio" />
-              )}
+              {hasTracks && release.tracks.map((t, i) => submitted ? <LinkRow key={i} label={t.name} sub="Download audio" icon="↓" href={t.url} download /> : <LockedRow key={i} label={t.name} sub="Download audio" />)}
               {release.pdfUrl && (submitted ? <LinkRow label="Press Kit PDF" sub="Biography + release info" icon="↓" href={release.pdfUrl} download /> : <LockedRow label="Press Kit PDF" sub="Biography + release info" />)}
               {release.artworkUrl && (submitted ? <LinkRow label="Artwork" sub="High resolution" icon="↓" href={release.artworkUrl} download /> : <LockedRow label="Artwork" sub="High resolution" />)}
             </div>
           </div>
         )}
-
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 28 }}>
           {relFb.length > 0 && (
             <div style={{ marginBottom: 24 }}>
@@ -349,13 +491,11 @@ const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
                       <StarRating value={f.rating} readonly />
                     </div>
                     <p style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.4)", lineHeight: 1.7, margin: 0 }}>{f.comment}</p>
-                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.2)", marginTop: 8 }}>{new Date(f.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</div>
                   </div>
                 ))}
               </div>
             </div>
           )}
-
           {!submitted ? (
             <div>
               <Label>Your feedback — unlock downloads</Label>
@@ -388,6 +528,7 @@ const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
   );
 };
 
+// ─── ADMIN MODAL ──────────────────────────────────────────────────────────────
 const AdminModal = ({ onClose, onAddRelease, onDeleteRelease, releases, feedbacks }) => {
   const [tab, setTab] = useState("new");
   const [form, setForm] = useState({ artist: "", title: "", label: "", genre: "", date: "", description: "", soundcloudUrl: "", spotifyUrl: "", tracks: [], pdfUrl: "", artworkUrl: "" });
@@ -395,10 +536,17 @@ const AdminModal = ({ onClose, onAddRelease, onDeleteRelease, releases, feedback
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [openRelease, setOpenRelease] = useState(null);
+  const [copied, setCopied] = useState(null);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const totalFb = feedbacks.length;
   const avgRating = totalFb ? (feedbacks.reduce((s, f) => s + f.rating, 0) / totalFb).toFixed(1) : "—";
+
+  const copyLink = (id) => {
+    navigator.clipboard.writeText(getReleaseUrl(id));
+    setCopied(id);
+    setTimeout(() => setCopied(null), 2000);
+  };
 
   const TabBtn = ({ id, label }) => (
     <button onClick={() => setTab(id)} style={{
@@ -459,7 +607,7 @@ const AdminModal = ({ onClose, onAddRelease, onDeleteRelease, releases, feedback
             {releases.length === 0 ? (
               <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.2)", textAlign: "center", padding: "40px 0" }}>No releases uploaded yet.</div>
             ) : releases.map(r => (
-              <div key={r.id} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden" }}>
+              <div key={r.id} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     {r.artworkUrl && <img src={r.artworkUrl} alt={r.title} style={{ width: 40, height: 40, objectFit: "cover", flexShrink: 0 }} />}
@@ -470,6 +618,13 @@ const AdminModal = ({ onClose, onAddRelease, onDeleteRelease, releases, feedback
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    {/* COPY LINK BUTTON */}
+                    <button
+                      onClick={() => copyLink(r.id)}
+                      style={{ background: copied === r.id ? "rgba(120,220,120,0.15)" : "rgba(255,255,255,0.06)", border: `1px solid ${copied === r.id ? "rgba(120,220,120,0.4)" : "rgba(255,255,255,0.15)"}`, color: copied === r.id ? "rgba(120,220,120,0.9)" : "rgba(255,255,255,0.6)", fontFamily: "'DM Mono', monospace", fontSize: 9, padding: "5px 12px", cursor: "pointer", transition: "all 0.2s", letterSpacing: "0.1em" }}
+                    >
+                      {copied === r.id ? "✓ Copied!" : "Copy Link"}
+                    </button>
                     {confirmDelete === r.id ? (
                       <>
                         <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,80,80,0.8)" }}>Sure?</span>
@@ -499,7 +654,6 @@ const AdminModal = ({ onClose, onAddRelease, onDeleteRelease, releases, feedback
                 </div>
               ))}
             </div>
-
             {releases.length === 0 ? (
               <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.2)", textAlign: "center", padding: "40px 0" }}>No releases yet.</div>
             ) : releases.map(r => {
@@ -524,7 +678,7 @@ const AdminModal = ({ onClose, onAddRelease, onDeleteRelease, releases, feedback
                         {rAvg && <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 18, color: "#fff" }}>{rAvg}</div>}
                         <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.3)" }}>{rFb.length} feedback</div>
                       </div>
-                      <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, transition: "transform 0.2s", display: "inline-block", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
+                      <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, display: "inline-block", transition: "transform 0.2s", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
                     </div>
                   </div>
                   {isOpen && (
@@ -555,6 +709,7 @@ const AdminModal = ({ onClose, onAddRelease, onDeleteRelease, releases, feedback
   );
 };
 
+// ─── RELEASE CARD ─────────────────────────────────────────────────────────────
 const ReleaseCard = ({ release, feedbacks, onOpen }) => {
   const relFb = feedbacks.filter(f => f.releaseId === release.id);
   const avg = relFb.length ? (relFb.reduce((s, f) => s + f.rating, 0) / relFb.length).toFixed(1) : null;
@@ -582,7 +737,6 @@ const ReleaseCard = ({ release, feedbacks, onOpen }) => {
           <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 7, color: "rgba(255,255,255,0.3)", textAlign: "right" }}>{relFb.length} fb</div>
         </div>
       ) : null}
-
       <div style={{ padding: "18px 22px 22px" }}>
         <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.35)", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 6 }}>{release.label}</div>
         <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 18, color: "#fff", marginBottom: 3 }}>{release.title}</div>
@@ -603,6 +757,7 @@ const ReleaseCard = ({ release, feedbacks, onOpen }) => {
   );
 };
 
+// ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [releases, setReleases] = useState([]);
   const [feedbacks, setFeedbacks] = useState([]);
@@ -613,6 +768,9 @@ export default function App() {
   const [adminKey, setAdminKey] = useState("");
   const [adminError, setAdminError] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // legge ?release= dall'URL
+  const urlReleaseId = new URLSearchParams(window.location.search).get("release");
 
   useEffect(() => {
     const load = async () => {
@@ -657,6 +815,19 @@ export default function App() {
     </div>
   );
 
+  // ── SINGLE RELEASE VIEW ──
+  if (urlReleaseId) {
+    const release = releases.find(r => r.id === urlReleaseId);
+    if (!release) return (
+      <div style={{ background: "#0e2060", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
+        <StarLogo size={40} color="rgba(255,255,255,0.2)" />
+        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.2)", letterSpacing: "0.2em" }}>RELEASE NOT FOUND</div>
+      </div>
+    );
+    return <SingleReleaseView release={release} feedbacks={feedbacks} onFeedback={addFeedback} />;
+  }
+
+  // ── HOMEPAGE ──
   return (
     <div style={{ background: "#0e2060", minHeight: "100vh", fontFamily: "'DM Mono', monospace" }}>
       <style>{`
@@ -718,19 +889,12 @@ export default function App() {
         <Modal onClose={() => { setAdminPrompt(false); setAdminKey(""); setAdminError(false); }}>
           <div style={{ padding: "44px 32px 36px" }}>
             <h2 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 20, color: "#fff", margin: "0 0 24px" }}>Admin Access</h2>
-            <input
-              type="password"
-              placeholder="Password"
-              value={adminKey}
+            <input type="password" placeholder="Password" value={adminKey}
               onChange={e => { setAdminKey(e.target.value); setAdminError(false); }}
               onKeyDown={e => e.key === "Enter" && unlock()}
-              autoComplete="new-password"
-              autoCorrect="off"
-              autoCapitalize="off"
-              spellCheck="false"
+              autoComplete="new-password" autoCorrect="off" autoCapitalize="off" spellCheck="false"
               style={{ ...iStyle, borderColor: adminError ? "rgba(255,80,80,0.5)" : "rgba(255,255,255,0.1)" }}
-              onFocus={onFocus}
-              onBlur={onBlur}
+              onFocus={onFocus} onBlur={onBlur}
             />
             {adminError && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,80,80,0.8)", marginTop: 8 }}>Wrong password.</div>}
             <button onClick={unlock} style={{ marginTop: 14, background: "#fff", border: "none", color: "#1d52b8", fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", padding: "11px 20px", cursor: "pointer", width: "100%", fontWeight: 700 }}>Enter</button>
