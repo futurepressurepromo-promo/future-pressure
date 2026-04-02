@@ -366,6 +366,68 @@ const FeedbackForm = ({ release, feedbacks, onFeedback }) => {
   );
 };
 
+
+// ─── DOWNLOAD ALL ZIP ────────────────────────────────────────────────────────
+const DownloadAllBtn = ({ tracks, artist, title }) => {
+  const [status, setStatus] = useState("idle"); // idle | loading | done | error
+
+  const handleDownloadAll = async () => {
+    setStatus("loading");
+    try {
+      // Load JSZip dynamically
+      const JSZip = (await import("https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm")).default;
+      const zip = new JSZip();
+      const folder = zip.folder(`${artist} - ${title}`);
+
+      await Promise.all(tracks.map(async (t) => {
+        const res = await fetch(t.url);
+        const blob = await res.blob();
+        const ext = blob.type.includes("mpeg") ? ".mp3" : blob.type.includes("wav") ? ".wav" : ".audio";
+        folder.file(`${t.name}${ext}`, blob);
+      }));
+
+      const content = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${artist} - ${title}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setStatus("done");
+      setTimeout(() => setStatus("idle"), 3000);
+    } catch (e) {
+      console.error(e);
+      setStatus("error");
+      setTimeout(() => setStatus("idle"), 3000);
+    }
+  };
+
+  const labels = { idle: "↓ Download All Tracks (.zip)", loading: "Preparing zip...", done: "✓ Downloaded!", error: "Error — try again" };
+  const colors = { idle: "#fff", loading: "rgba(255,255,255,0.5)", done: "rgba(120,220,120,0.9)", error: "rgba(255,80,80,0.8)" };
+
+  return (
+    <div onClick={status === "idle" ? handleDownloadAll : undefined} style={{
+      display: "flex", justifyContent: "space-between", alignItems: "center",
+      border: `1px solid ${status === "done" ? "rgba(120,220,120,0.3)" : "rgba(255,255,255,0.15)"}`,
+      padding: "13px 16px", cursor: status === "idle" ? "pointer" : "default",
+      background: status === "done" ? "rgba(120,220,120,0.04)" : "rgba(255,255,255,0.02)",
+      marginTop: 4, transition: "all 0.2s",
+    }}
+      onMouseEnter={e => status === "idle" && (e.currentTarget.style.borderColor = "rgba(255,255,255,0.4)", e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = status === "done" ? "rgba(120,220,120,0.3)" : "rgba(255,255,255,0.15)"; e.currentTarget.style.background = status === "done" ? "rgba(120,220,120,0.04)" : "rgba(255,255,255,0.02)"; }}
+    >
+      <div>
+        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: colors[status] }}>{labels[status]}</div>
+        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.3)", marginTop: 3 }}>{tracks.length} tracks in a single zip file</div>
+      </div>
+      {status === "loading"
+        ? <div style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.2)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.8s linear infinite", flexShrink: 0 }} />
+        : <span style={{ color: colors[status], fontSize: 16, flexShrink: 0 }}>⬇</span>
+      }
+    </div>
+  );
+};
+
 const ReleaseContent = ({ release, feedbacks, onFeedback, submitted, setSubmitted }) => {
   const relFb = feedbacks.filter(f => f.releaseId === release.id);
   const hasTracks = release.tracks && release.tracks.length > 0;
@@ -395,6 +457,7 @@ const ReleaseContent = ({ release, feedbacks, onFeedback, submitted, setSubmitte
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {hasTracks && release.tracks.map((t, i) => submitted ? <LinkRow key={i} label={t.name} sub="Download audio" icon="↓" href={t.url} download filename={t.name} /> : <LockedRow key={i} label={t.name} sub="Download audio" />)}
+            {hasTracks && submitted && release.tracks.length > 1 && <DownloadAllBtn tracks={release.tracks} artist={release.artist} title={release.title} />}
             {release.pdfUrl && (submitted ? <LinkRow label="Press Kit PDF" sub="Biography + release info" icon="↓" href={release.pdfUrl} download filename={`${release.artist} - ${release.title} - Press Kit.pdf`} /> : <LockedRow label="Press Kit PDF" sub="Biography + release info" />)}
             {release.artworkUrl && (submitted ? <LinkRow label="Artwork" sub="High resolution" icon="↓" href={release.artworkUrl} download filename={`${release.artist} - ${release.title} - Artwork`} /> : <LockedRow label="Artwork" sub="High resolution" />)}
           </div>
