@@ -37,6 +37,23 @@ const dbAddFeedback = (f) => sb("feedbacks", { method: "POST", body: JSON.string
   release_id: f.releaseId, name: f.name, email: f.email, rating: f.rating, comment: f.comment,
 }) });
 
+const dbGetArticles = () => sb("articles?order=created_at.desc");
+const dbAddArticle = (a) => sb("articles", { method: "POST", body: JSON.stringify({
+  id: a.id, title: a.title, subtitle: a.subtitle, category: a.category,
+  author: a.author, date: a.date, cover_url: a.coverUrl, body: a.body,
+}) });
+const dbUpdateArticle = (a) => sb(`articles?id=eq.${a.id}`, { method: "PATCH", prefer: "return=representation", body: JSON.stringify({
+  title: a.title, subtitle: a.subtitle, category: a.category,
+  author: a.author, date: a.date, cover_url: a.coverUrl, body: a.body,
+}) });
+const dbDeleteArticle = (id) => sb(`articles?id=eq.${id}`, { method: "DELETE", prefer: "" });
+
+const mapArticle = (a) => ({
+  id: a.id, title: a.title, subtitle: a.subtitle, category: a.category,
+  author: a.author, date: a.date, coverUrl: a.cover_url, body: a.body,
+  createdAt: a.created_at,
+});
+
 const mapRelease = (r) => ({
   id: r.id, artist: r.artist, title: r.title, label: r.label, genre: r.genre,
   date: r.date, description: r.description, soundcloudUrl: r.soundcloud_url,
@@ -542,7 +559,207 @@ const ReleaseModal = ({ release, feedbacks, onClose, onFeedback }) => {
   );
 };
 
-const AdminModal = ({ onClose, onAddRelease, onUpdateRelease, onDeleteRelease, releases, feedbacks }) => {
+
+// ─── ARTICLE FORM ─────────────────────────────────────────────────────────────
+const CATEGORIES = ["Interview", "Review", "News", "Feature", "Editorial"];
+
+const ArticleForm = ({ initial, onSave, onCancel, saveLabel = "Publish Article" }) => {
+  const [form, setForm] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  const [done, setDone] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const ref = useRef(null);
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleCoverUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try { set("coverUrl", await uploadFile(file, "image")); } catch {}
+    setUploading(false);
+  };
+
+  const handleSave = async () => {
+    if (!form.title || !form.body) return;
+    setSaving(true);
+    await onSave(form);
+    setSaving(false);
+    setDone(true);
+  };
+
+  if (done) return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(120,220,120,0.8)" }}>✓ Article published.</div>
+      {onCancel && <button onClick={onCancel} style={{ background: "none", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.5)", fontFamily: "'DM Mono', monospace", fontSize: 9, letterSpacing: "0.15em", textTransform: "uppercase", padding: "8px 16px", cursor: "pointer" }}>← Back</button>}
+    </div>
+  );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {onCancel && <button onClick={onCancel} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontFamily: "'DM Mono', monospace", fontSize: 9, letterSpacing: "0.15em", textTransform: "uppercase", padding: "0 0 8px", cursor: "pointer", textAlign: "left" }}>← Back to articles</button>}
+
+      <input placeholder="Title *" value={form.title || ""} onChange={e => set("title", e.target.value)} style={iStyle} onFocus={onFocus} onBlur={onBlur} />
+      <input placeholder="Subtitle / tagline" value={form.subtitle || ""} onChange={e => set("subtitle", e.target.value)} style={iStyle} onFocus={onFocus} onBlur={onBlur} />
+      <input placeholder="Author" value={form.author || ""} onChange={e => set("author", e.target.value)} style={iStyle} onFocus={onFocus} onBlur={onBlur} />
+
+      <div style={{ display: "flex", gap: 8 }}>
+        <select value={form.category || ""} onChange={e => set("category", e.target.value)} style={{ ...iStyle, flex: 1 }} onFocus={onFocus} onBlur={onBlur}>
+          <option value="">Category</option>
+          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <input type="date" value={form.date || ""} onChange={e => set("date", e.target.value)} style={{ ...iStyle, flex: 1 }} onFocus={onFocus} onBlur={onBlur} />
+      </div>
+
+      {/* Cover image upload */}
+      <div>
+        <input ref={ref} type="file" accept="image/*" onChange={handleCoverUpload} style={{ display: "none" }} />
+        <div onClick={() => !uploading && ref.current?.click()} style={{ border: `1px dashed ${form.coverUrl ? "rgba(120,220,120,0.4)" : "rgba(255,255,255,0.15)"}`, padding: "12px 16px", cursor: uploading ? "wait" : "pointer", background: form.coverUrl ? "rgba(120,220,120,0.04)" : "transparent", display: "flex", justifyContent: "space-between", alignItems: "center", transition: "all 0.2s" }}
+          onMouseEnter={e => !form.coverUrl && (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
+          onMouseLeave={e => e.currentTarget.style.background = form.coverUrl ? "rgba(120,220,120,0.04)" : "transparent"}
+        >
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: form.coverUrl ? "rgba(120,220,120,0.8)" : "rgba(255,255,255,0.6)" }}>
+            {uploading ? "Uploading..." : form.coverUrl ? "✓ Cover image uploaded" : "↑ Upload cover image"}
+          </div>
+          {uploading && <div style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,0.2)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />}
+        </div>
+      </div>
+
+      {/* Body text editor */}
+      <div style={{ marginTop: 4 }}>
+        <Label>Article body *</Label>
+        <textarea
+          placeholder="Write your article here...&#10;&#10;You can use blank lines to separate paragraphs."
+          value={form.body || ""}
+          onChange={e => set("body", e.target.value)}
+          rows={12}
+          style={{ ...iStyle, resize: "vertical", lineHeight: 1.8 }}
+          onFocus={onFocus} onBlur={onBlur}
+        />
+        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.2)", marginTop: 6 }}>
+          Separate paragraphs with blank lines. Use **text** for bold, *text* for italic.
+        </div>
+      </div>
+
+      <button onClick={handleSave} disabled={saving || !form.title || !form.body} style={{ background: saving || !form.title || !form.body ? "rgba(255,255,255,0.1)" : "#fff", border: "none", color: saving || !form.title || !form.body ? "rgba(255,255,255,0.3)" : "#1d52b8", fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", padding: "12px 20px", cursor: saving || !form.title || !form.body ? "not-allowed" : "pointer", marginTop: 8, fontWeight: 700 }}>
+        {saving ? "Publishing..." : saveLabel}
+      </button>
+    </div>
+  );
+};
+
+// ─── ARTICLE BODY RENDERER ────────────────────────────────────────────────────
+const renderBody = (text) => {
+  if (!text) return null;
+  return text.split(/\n\n+/).map((para, i) => {
+    const parts = para.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\*(.+?)\*/g, '<i>$1</i>');
+    return <p key={i} style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 2, marginBottom: 20 }} dangerouslySetInnerHTML={{ __html: parts.replace(/\n/g, '<br/>') }} />;
+  });
+};
+
+// ─── ARTICLE PAGE (single article view) ──────────────────────────────────────
+const ArticlePage = ({ article, onBack }) => (
+  <div style={{ minHeight: "100vh", background: "#0e2060" }}>
+    {article.coverUrl ? (
+      <div style={{ position: "relative", width: "100%", paddingTop: "40%", overflow: "hidden" }}>
+        <img src={article.coverUrl} alt={article.title} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(14,32,96,0.4) 0%, transparent 30%, #0e2060 100%)" }} />
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, padding: "20px 32px", display: "flex", alignItems: "center", gap: 14 }}>
+          <StarLogo size={28} /><span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 13, color: "#fff", letterSpacing: "0.08em", textTransform: "uppercase" }}>Future Pressure</span>
+        </div>
+      </div>
+    ) : (
+      <nav style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", padding: "16px 32px", display: "flex", alignItems: "center", gap: 14, background: "rgba(14,32,96,0.95)" }}>
+        <StarLogo size={30} /><span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 13, color: "#fff", letterSpacing: "0.08em", textTransform: "uppercase" }}>Future Pressure</span>
+      </nav>
+    )}
+
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: "48px 24px 100px" }}>
+      <button onClick={onBack} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontFamily: "'DM Mono', monospace", fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", cursor: "pointer", marginBottom: 32, padding: 0 }}>← Back to journal</button>
+
+      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 20, flexWrap: "wrap" }}>
+        {article.category && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "#fff", background: "rgba(255,255,255,0.12)", padding: "3px 12px", letterSpacing: "0.15em", textTransform: "uppercase" }}>{article.category}</span>}
+        {article.date && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.3)" }}>{new Date(article.date).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}</span>}
+        {article.author && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.3)" }}>by {article.author}</span>}
+      </div>
+
+      <h1 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: "clamp(26px, 5vw, 42px)", color: "#fff", letterSpacing: "-0.02em", lineHeight: 1.1, marginBottom: 16 }}>{article.title}</h1>
+      {article.subtitle && <p style={{ fontFamily: "'DM Mono', monospace", fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.7, marginBottom: 40, borderLeft: "2px solid rgba(255,255,255,0.15)", paddingLeft: 16 }}>{article.subtitle}</p>}
+
+      <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 32 }}>
+        {renderBody(article.body)}
+      </div>
+    </div>
+
+    <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "20px 32px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <StarLogo size={16} color="rgba(255,255,255,0.2)" />
+        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.2)", letterSpacing: "0.2em", textTransform: "uppercase" }}>Future Pressure © 2026</span>
+      </div>
+      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.15)", letterSpacing: "0.15em" }}>Press & Promo Agency</span>
+    </div>
+  </div>
+);
+
+// ─── ARTICLE CARD ─────────────────────────────────────────────────────────────
+const ArticleCard = ({ article, onOpen }) => (
+  <div onClick={() => onOpen(article)} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", transition: "all 0.25s", position: "relative", overflow: "hidden" }}
+    onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.35)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+    onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.transform = "translateY(0)"; }}
+  >
+    {article.coverUrl && (
+      <div style={{ width: "100%", paddingTop: "52%", position: "relative", overflow: "hidden" }}>
+        <img src={article.coverUrl} alt={article.title} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 40%, rgba(14,32,96,0.95) 100%)" }} />
+        {article.category && (
+          <div style={{ position: "absolute", top: 12, left: 12, fontFamily: "'DM Mono', monospace", fontSize: 8, color: "#fff", background: "rgba(14,32,96,0.85)", border: "1px solid rgba(255,255,255,0.2)", padding: "3px 10px", letterSpacing: "0.15em", textTransform: "uppercase" }}>{article.category}</div>
+        )}
+      </div>
+    )}
+    <div style={{ padding: "18px 22px 24px" }}>
+      {!article.coverUrl && article.category && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.4)", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 8 }}>{article.category}</div>}
+      <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 17, color: "#fff", marginBottom: 8, lineHeight: 1.2 }}>{article.title}</div>
+      {article.subtitle && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.4)", lineHeight: 1.6, marginBottom: 14 }}>{article.subtitle}</div>}
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        {article.author && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.3)" }}>by {article.author}</span>}
+        {article.date && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.2)" }}>{new Date(article.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span>}
+      </div>
+    </div>
+    <div style={{ position: "absolute", bottom: 18, right: 18, fontFamily: "'DM Mono', monospace", fontSize: 16, color: "rgba(255,255,255,0.15)" }}>→</div>
+  </div>
+);
+
+// ─── JOURNAL PAGE ─────────────────────────────────────────────────────────────
+const JournalPage = ({ articles, onOpenArticle }) => {
+  const [activeCategory, setActiveCategory] = useState("All");
+  const cats = ["All", ...CATEGORIES.filter(c => articles.some(a => a.category === c))];
+  const filtered = activeCategory === "All" ? articles : articles.filter(a => a.category === activeCategory);
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#0e2060" }}>
+      <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", padding: "60px 32px 0", maxWidth: 960, margin: "0 auto" }}>
+        <div style={{ marginBottom: 40 }}>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.3)", letterSpacing: "0.4em", textTransform: "uppercase", marginBottom: 14 }}>Future Pressure</div>
+          <h2 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: "clamp(28px, 5vw, 48px)", color: "#fff", letterSpacing: "-0.02em", lineHeight: 1.05, marginBottom: 24 }}>Journal</h2>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {cats.map(c => (
+              <button key={c} onClick={() => setActiveCategory(c)} style={{ background: activeCategory === c ? "#fff" : "none", border: `1px solid ${activeCategory === c ? "#fff" : "rgba(255,255,255,0.2)"}`, color: activeCategory === c ? "#1d52b8" : "rgba(255,255,255,0.5)", fontFamily: "'DM Mono', monospace", fontSize: 9, letterSpacing: "0.15em", textTransform: "uppercase", padding: "5px 14px", cursor: "pointer", transition: "all 0.2s" }}>{c}</button>
+            ))}
+          </div>
+        </div>
+
+        {filtered.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "60px 0", color: "rgba(255,255,255,0.15)", fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: "0.25em" }}>NO ARTICLES YET</div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 2, paddingBottom: 80 }}>
+            {filtered.map(a => <ArticleCard key={a.id} article={a} onOpen={onOpenArticle} />)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const AdminModal = ({ onClose, onAddRelease, onUpdateRelease, onDeleteRelease, releases, feedbacks, articles, onAddArticle, onUpdateArticle, onDeleteArticle }) => {
   const [tab, setTab] = useState("new");
   const [editingRelease, setEditingRelease] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -550,6 +767,8 @@ const AdminModal = ({ onClose, onAddRelease, onUpdateRelease, onDeleteRelease, r
   const [copied, setCopied] = useState(null);
   const [emailRelease, setEmailRelease] = useState(null);
   const [emailCopied, setEmailCopied] = useState(false);
+  const [editingArticle, setEditingArticle] = useState(null);
+  const [confirmDeleteArticle, setConfirmDeleteArticle] = useState(null);
 
   const totalFb = feedbacks.length;
   const avgRating = totalFb ? (feedbacks.reduce((s, f) => s + f.rating, 0) / totalFb).toFixed(1) : "—";
@@ -591,6 +810,7 @@ const AdminModal = ({ onClose, onAddRelease, onUpdateRelease, onDeleteRelease, r
           <TabBtn id="feedback" label={`Feedback (${totalFb})`} />
           <TabBtn id="email" label="Email" />
           <TabBtn id="contacts" label="Contacts" />
+          <TabBtn id="articles" label={`Journal (${articles.length})`} />
         </div>
 
         {/* ── NEW RELEASE ── */}
@@ -813,6 +1033,61 @@ const AdminModal = ({ onClose, onAddRelease, onUpdateRelease, onDeleteRelease, r
             })}
           </div>
         )}
+
+        {/* ── ARTICLES / JOURNAL ── */}
+        {tab === "articles" && (
+          editingArticle ? (
+            editingArticle.id === "new" ? (
+              <ArticleForm
+                initial={{ title: "", subtitle: "", category: "", author: "", date: "", coverUrl: "", body: "" }}
+                onSave={async (form) => { await onAddArticle({ ...form, id: `art_${Date.now()}` }); }}
+                onCancel={() => setEditingArticle(null)}
+                saveLabel="Publish Article"
+              />
+            ) : (
+              <ArticleForm
+                initial={editingArticle}
+                onSave={async (form) => { await onUpdateArticle({ ...form, id: editingArticle.id }); }}
+                onCancel={() => setEditingArticle(null)}
+                saveLabel="Save Changes"
+              />
+            )
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <button onClick={() => setEditingArticle({ id: "new" })} style={{ background: "#fff", border: "none", color: "#1d52b8", fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", padding: "10px 16px", cursor: "pointer", fontWeight: 700, marginBottom: 8 }}>+ New Article</button>
+              {articles.length === 0 ? (
+                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.2)", textAlign: "center", padding: "40px 0" }}>No articles yet.</div>
+              ) : articles.map(a => (
+                <div key={a.id} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                      {a.coverUrl && <img src={a.coverUrl} alt={a.title} style={{ width: 36, height: 36, objectFit: "cover", flexShrink: 0 }} />}
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 13, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.title}</div>
+                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.35)" }}>{a.category} {a.author ? `· by ${a.author}` : ""}</div>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+                      <button onClick={() => setEditingArticle(a)} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", fontFamily: "'DM Mono', monospace", fontSize: 8, padding: "4px 8px", cursor: "pointer" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.color = "#1d52b8"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#fff"; }}
+                      >Edit</button>
+                      {confirmDeleteArticle === a.id ? (
+                        <>
+                          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,80,80,0.8)" }}>Sure?</span>
+                          <button onClick={async () => { await onDeleteArticle(a.id); setConfirmDeleteArticle(null); }} style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.4)", color: "rgba(255,80,80,0.9)", fontFamily: "'DM Mono', monospace", fontSize: 8, padding: "4px 8px", cursor: "pointer" }}>Del</button>
+                          <button onClick={() => setConfirmDeleteArticle(null)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.4)", fontFamily: "'DM Mono', monospace", fontSize: 8, padding: "4px 8px", cursor: "pointer" }}>✕</button>
+                        </>
+                      ) : (
+                        <button onClick={() => setConfirmDeleteArticle(a.id)} style={{ background: "none", border: "1px solid rgba(255,80,80,0.25)", color: "rgba(255,80,80,0.6)", fontFamily: "'DM Mono', monospace", fontSize: 8, padding: "4px 8px", cursor: "pointer" }}>Delete</button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        )}
       </div>
     </Modal>
   );
@@ -874,19 +1149,27 @@ export default function App() {
   const [adminKey, setAdminKey] = useState("");
   const [adminError, setAdminError] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [articles, setArticles] = useState([]);
+  const [activeArticle, setActiveArticle] = useState(null);
+  const [showJournal, setShowJournal] = useState(false);
   const urlReleaseId = new URLSearchParams(window.location.search).get("release");
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [r, f] = await Promise.all([dbGetReleases(), dbGetFeedbacks()]);
+        const [r, f, a] = await Promise.all([dbGetReleases(), dbGetFeedbacks(), dbGetArticles()]);
         setReleases(r.map(mapRelease));
         setFeedbacks(f.map(mapFeedback));
+        setArticles(a.map(mapArticle));
       } catch (e) { console.error("Load error:", e); }
       setLoading(false);
     };
     load();
   }, []);
+
+  const addArticle = async (a) => { await dbAddArticle(a); const res = await dbGetArticles(); setArticles(res.map(mapArticle)); };
+  const updateArticle = async (a) => { await dbUpdateArticle(a); const res = await dbGetArticles(); setArticles(res.map(mapArticle)); };
+  const deleteArticle = async (id) => { await dbDeleteArticle(id); setArticles(prev => prev.filter(a => a.id !== id)); };
 
   const addRelease = async (rel) => { await dbAddRelease(rel); const r = await dbGetReleases(); setReleases(r.map(mapRelease)); };
   const updateRelease = async (rel) => { await dbUpdateRelease(rel); const r = await dbGetReleases(); setReleases(r.map(mapRelease)); };
@@ -936,14 +1219,25 @@ export default function App() {
             <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.3)", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 1 }}>Promo Portal</div>
           </div>
         </div>
-        <button onClick={() => adminUnlocked ? setShowAdmin(true) : setAdminPrompt(true)}
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button onClick={() => { setShowJournal(!showJournal); setActiveArticle(null); }} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.6)", fontFamily: "'DM Mono', monospace", fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", padding: "8px 14px", cursor: "pointer", transition: "all 0.2s" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#fff"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "rgba(255,255,255,0.6)"; }}
+          >{showJournal ? "← Promo" : "Journal"}</button>
+          <button onClick={() => adminUnlocked ? setShowAdmin(true) : setAdminPrompt(true)}
           style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.7)", fontFamily: "'DM Mono', monospace", fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", padding: "8px 16px", cursor: "pointer", transition: "all 0.2s" }}
           onMouseEnter={e => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.color = "#1d52b8"; e.currentTarget.style.borderColor = "#fff"; }}
           onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "rgba(255,255,255,0.7)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; }}
-        >+ Add</button>
+          >+ Add</button>
+        </div>
       </nav>
 
-      <div style={{ padding: "72px 32px 52px", maxWidth: 760, margin: "0 auto", textAlign: "center", position: "relative" }}>
+      {/* ── JOURNAL / ARTICLE VIEWS ── */}
+      {showJournal && !activeArticle && <JournalPage articles={articles} onOpenArticle={(a) => setActiveArticle(a)} />}
+      {activeArticle && <ArticlePage article={activeArticle} onBack={() => setActiveArticle(null)} />}
+
+      {/* ── PROMO HOME ── */}
+      {!showJournal && !activeArticle && <div style={{ padding: "72px 32px 52px", maxWidth: 760, margin: "0 auto", textAlign: "center", position: "relative" }}>
         <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", opacity: 0.03, pointerEvents: "none" }}><StarLogo size={320} /></div>
         <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.3)", letterSpacing: "0.45em", textTransform: "uppercase", marginBottom: 18 }}>Underground Electronic Music</div>
         <h1 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: "clamp(32px, 6vw, 58px)", color: "#fff", letterSpacing: "-0.02em", lineHeight: 1.05, margin: "0 0 20px" }}>Promo Releases</h1>
@@ -953,7 +1247,7 @@ export default function App() {
         <div style={{ width: 1, height: 48, background: "rgba(255,255,255,0.15)", margin: "36px auto 0" }} />
       </div>
 
-      <div style={{ maxWidth: 960, margin: "0 auto", padding: "0 24px 100px" }}>
+      {!showJournal && !activeArticle && <div style={{ maxWidth: 960, margin: "0 auto", padding: "0 24px 100px" }}>
         {releases.length === 0 ? (
           <div style={{ textAlign: "center", padding: "80px 20px", color: "rgba(255,255,255,0.15)", fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: "0.25em" }}>NO RELEASES UPLOADED YET</div>
         ) : (
@@ -963,6 +1257,7 @@ export default function App() {
         )}
       </div>
 
+      }
       <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "24px 32px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <StarLogo size={18} color="rgba(255,255,255,0.25)" />
@@ -971,8 +1266,9 @@ export default function App() {
         <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.15)", letterSpacing: "0.15em" }}>Press & Promo Agency</span>
       </div>
 
-      {activeRelease && <ReleaseModal release={activeRelease} feedbacks={feedbacks} onClose={() => setActiveRelease(null)} onFeedback={addFeedback} />}
-      {showAdmin && <AdminModal onClose={() => setShowAdmin(false)} onAddRelease={addRelease} onUpdateRelease={updateRelease} onDeleteRelease={deleteRelease} releases={releases} feedbacks={feedbacks} />}
+      {!showJournal && !activeArticle && activeRelease && <ReleaseModal release={activeRelease} feedbacks={feedbacks} onClose={() => setActiveRelease(null)} onFeedback={addFeedback} />}
+      </> }
+      {showAdmin && <AdminModal onClose={() => setShowAdmin(false)} onAddRelease={addRelease} onUpdateRelease={updateRelease} onDeleteRelease={deleteRelease} releases={releases} feedbacks={feedbacks} articles={articles} onAddArticle={addArticle} onUpdateArticle={updateArticle} onDeleteArticle={deleteArticle} />}
 
       {adminPrompt && (
         <Modal onClose={() => { setAdminPrompt(false); setAdminKey(""); setAdminError(false); }}>
