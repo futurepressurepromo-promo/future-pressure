@@ -43,7 +43,7 @@ const authSignOut = async (accessToken) => {
   });
 };
 
-const dbGetReleases = () => sb(releases?order=created_at.desc");
+const dbGetReleases = () => sb("releases?order=created_at.desc");
 const dbGetFeedbacks = () => sb("feedbacks?order=created_at.desc");
 const dbAddRelease = (r) => sb("releases", { method: "POST", body: JSON.stringify({
   id: r.id, artist: r.artist, title: r.title, label: r.label, genre: r.genre,
