@@ -20,7 +20,30 @@ const sb = async (path, options = {}) => {
   return text ? JSON.parse(text) : [];
 };
 
-const dbGetReleases = () => sb("releases?order=created_at.desc");
+// ─── SUPABASE AUTH ───────────────────────────────────────────────────────────
+const sbAuth = async (path, body) => {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/${path}`, {
+    method: "POST",
+    headers: {
+      "apikey": SUPABASE_KEY,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error_description || data.msg || "Auth error");
+  return data;
+};
+
+const authSignIn = (email, password) => sbAuth("token?grant_type=password", { email, password });
+const authSignOut = async (accessToken) => {
+  await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+    method: "POST",
+    headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${accessToken}` },
+  });
+};
+
+const dbGetReleases = () => sb(releases?order=created_at.desc");
 const dbGetFeedbacks = () => sb("feedbacks?order=created_at.desc");
 const dbAddRelease = (r) => sb("releases", { method: "POST", body: JSON.stringify({
   id: r.id, artist: r.artist, title: r.title, label: r.label, genre: r.genre,
@@ -720,7 +743,7 @@ const ReleaseCard = ({ release, feedbacks, onOpen }) => {
 };
 
 // ─── ADMIN MODAL ──────────────────────────────────────────────────────────────
-const AdminModal = ({ onClose, onAddRelease, onUpdateRelease, onDeleteRelease, releases, feedbacks, articles, onAddArticle, onUpdateArticle, onDeleteArticle }) => {
+const AdminModal = ({ onClose, onSignOut, onAddRelease, onUpdateRelease, onDeleteRelease, releases, feedbacks, articles, onAddArticle, onUpdateArticle, onDeleteArticle }) => {
   const [tab, setTab] = useState("new");
   const [editingRelease, setEditingRelease] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -758,13 +781,19 @@ const AdminModal = ({ onClose, onAddRelease, onUpdateRelease, onDeleteRelease, r
   return (
     <Modal onClose={onClose}>
       <div style={{ padding: "44px 32px 40px" }}>
-        <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: 28, overflowX: "auto" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
+          <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.08)", flex: 1, overflowX: "auto" }}>
           <TabBtn id="new" label="New" />
           <TabBtn id="releases" label={`Releases (${releases.length})`} />
           <TabBtn id="feedback" label={`Feedback (${totalFb})`} />
           <TabBtn id="email" label="Email" />
           <TabBtn id="contacts" label="Contacts" />
           <TabBtn id="articles" label={`Journal (${articles.length})`} />
+          </div>
+          <button onClick={onSignOut} style={{ background: "none", border: "1px solid rgba(255,80,80,0.25)", color: "rgba(255,80,80,0.6)", fontFamily: "'DM Mono', monospace", fontSize: 8, letterSpacing: "0.1em", textTransform: "uppercase", padding: "5px 10px", cursor: "pointer", flexShrink: 0, marginLeft: 12, marginBottom: 0, alignSelf: "flex-start" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,80,80,0.6)"; e.currentTarget.style.color = "rgba(255,80,80,0.9)"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,80,80,0.25)"; e.currentTarget.style.color = "rgba(255,80,80,0.6)"; }}
+          >Sign out</button>
         </div>
 
         {tab === "new" && <ReleaseForm initial={emptyForm} onSave={async (form) => { await onAddRelease({ ...form, id: `rel_${Date.now()}` }); }} saveLabel="Publish Release" />}
@@ -1012,9 +1041,13 @@ export default function App() {
   const [activeArticle, setActiveArticle] = useState(null); // article full page
   const [showAdmin, setShowAdmin] = useState(false);
   const [adminPrompt, setAdminPrompt] = useState(false);
-  const [adminUnlocked, setAdminUnlocked] = useState(() => sessionStorage.getItem('fp_admin') === 'true');
-  const [adminKey, setAdminKey] = useState("");
-  const [adminError, setAdminError] = useState(false);
+  const [adminSession, setAdminSession] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem('fp_session') || 'null'); } catch { return null; }
+  });
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [adminError, setAdminError] = useState("");
+  const [adminLoading, setAdminLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const urlReleaseId = new URLSearchParams(window.location.search).get("release");
@@ -1040,11 +1073,27 @@ export default function App() {
   const updateArticle = async (a) => { await dbUpdateArticle(a); const res = await dbGetArticles(); setArticles(res.map(mapArticle)); };
   const deleteArticle = async (id) => { await dbDeleteArticle(id); setArticles(prev => prev.filter(a => a.id !== id)); };
 
-  const unlock = () => {
-    if (adminKey === "FP#xQ9!mZ4@press") {
-      sessionStorage.setItem('fp_admin', 'true');
-      setAdminUnlocked(true); setAdminPrompt(false); setShowAdmin(true); setAdminError(false);
-    } else { setAdminError(true); setAdminKey(""); }
+  const unlock = async () => {
+    if (!adminEmail.trim() || !adminPassword.trim()) return;
+    setAdminLoading(true); setAdminError("");
+    try {
+      const session = await authSignIn(adminEmail.trim(), adminPassword.trim());
+      sessionStorage.setItem('fp_session', JSON.stringify(session));
+      setAdminSession(session);
+      setAdminPrompt(false);
+      setShowAdmin(true);
+    } catch (e) {
+      setAdminError("Wrong email or password.");
+      setAdminPassword("");
+    }
+    setAdminLoading(false);
+  };
+
+  const signOut = async () => {
+    if (adminSession?.access_token) await authSignOut(adminSession.access_token).catch(() => {});
+    sessionStorage.removeItem('fp_session');
+    setAdminSession(null);
+    setShowAdmin(false);
   };
 
   const goHome = () => { setActiveRelease(null); setActiveArticle(null); };
@@ -1094,7 +1143,7 @@ export default function App() {
             <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 8, color: "rgba(255,255,255,0.3)", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 1 }}>Promo Portal</div>
           </div>
         </div>
-        <button onClick={() => adminUnlocked ? setShowAdmin(true) : setAdminPrompt(true)}
+        <button onClick={() => adminSession ? setShowAdmin(true) : setAdminPrompt(true)}
           style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.7)", fontFamily: "'DM Mono', monospace", fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", padding: "8px 16px", cursor: "pointer", transition: "all 0.2s" }}
           onMouseEnter={e => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.color = "#1d52b8"; e.currentTarget.style.borderColor = "#fff"; }}
           onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "rgba(255,255,255,0.7)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; }}
@@ -1147,21 +1196,37 @@ export default function App() {
 
       {/* MODALS */}
       {activeRelease && <ReleaseModal release={activeRelease} feedbacks={feedbacks} onClose={() => setActiveRelease(null)} onFeedback={addFeedback} />}
-      {showAdmin && <AdminModal onClose={() => setShowAdmin(false)} onAddRelease={addRelease} onUpdateRelease={updateRelease} onDeleteRelease={deleteRelease} releases={releases} feedbacks={feedbacks} articles={articles} onAddArticle={addArticle} onUpdateArticle={updateArticle} onDeleteArticle={deleteArticle} />}
+      {showAdmin && <AdminModal onClose={() => setShowAdmin(false)} onSignOut={signOut} onAddRelease={addRelease} onUpdateRelease={updateRelease} onDeleteRelease={deleteRelease} releases={releases} feedbacks={feedbacks} articles={articles} onAddArticle={addArticle} onUpdateArticle={updateArticle} onDeleteArticle={deleteArticle} />}
 
       {adminPrompt && (
-        <Modal onClose={() => { setAdminPrompt(false); setAdminKey(""); setAdminError(false); }}>
+        <Modal onClose={() => { setAdminPrompt(false); setAdminEmail(""); setAdminPassword(""); setAdminError(""); }}>
           <div style={{ padding: "44px 32px 36px" }}>
-            <h2 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 20, color: "#fff", margin: "0 0 24px" }}>Admin Access</h2>
-            <input type="password" placeholder="Password" value={adminKey}
-              onChange={e => { setAdminKey(e.target.value); setAdminError(false); }}
-              onKeyDown={e => e.key === "Enter" && unlock()}
-              autoComplete="new-password" autoCorrect="off" autoCapitalize="off" spellCheck="false"
-              style={{ ...iStyle, borderColor: adminError ? "rgba(255,80,80,0.5)" : "rgba(255,255,255,0.1)" }}
-              onFocus={onFocus} onBlur={onBlur}
-            />
-            {adminError && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,80,80,0.8)", marginTop: 8 }}>Wrong password.</div>}
-            <button onClick={unlock} style={{ marginTop: 14, background: "#fff", border: "none", color: "#1d52b8", fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", padding: "11px 20px", cursor: "pointer", width: "100%", fontWeight: 700 }}>Enter</button>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28 }}>
+              <StarLogo size={22} />
+              <h2 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 18, color: "#fff", margin: 0 }}>Admin Access</h2>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <input
+                type="email" placeholder="Email" value={adminEmail}
+                onChange={e => { setAdminEmail(e.target.value); setAdminError(""); }}
+                onKeyDown={e => e.key === "Enter" && unlock()}
+                autoComplete="email"
+                style={{ ...iStyle, borderColor: adminError ? "rgba(255,80,80,0.5)" : "rgba(255,255,255,0.1)" }}
+                onFocus={onFocus} onBlur={onBlur}
+              />
+              <input
+                type="password" placeholder="Password" value={adminPassword}
+                onChange={e => { setAdminPassword(e.target.value); setAdminError(""); }}
+                onKeyDown={e => e.key === "Enter" && unlock()}
+                autoComplete="current-password"
+                style={{ ...iStyle, borderColor: adminError ? "rgba(255,80,80,0.5)" : "rgba(255,255,255,0.1)" }}
+                onFocus={onFocus} onBlur={onBlur}
+              />
+            </div>
+            {adminError && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,80,80,0.8)", marginTop: 8 }}>{adminError}</div>}
+            <button onClick={unlock} disabled={adminLoading} style={{ marginTop: 14, background: adminLoading ? "rgba(255,255,255,0.1)" : "#fff", border: "none", color: adminLoading ? "rgba(255,255,255,0.3)" : "#1d52b8", fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", padding: "11px 20px", cursor: adminLoading ? "wait" : "pointer", width: "100%", fontWeight: 700 }}>
+              {adminLoading ? "Signing in..." : "Sign In"}
+            </button>
           </div>
         </Modal>
       )}
